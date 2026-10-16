@@ -2,6 +2,12 @@ import { createHash, randomUUID } from "node:crypto";
 import { closeSync, mkdirSync, openSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
+import {
+  cartCommandInput,
+  cartEffect,
+  cartCommandKey,
+  type CartCommand,
+} from "./cart-contracts";
 
 export type Product = {
   id: string;
@@ -29,6 +35,7 @@ export type ShopState = {
   cart_id: string;
   cart_revision: number;
   checkout_token: string;
+  shop_token: string;
   state_id: string;
 };
 export type CheckoutIntent = {
@@ -176,7 +183,11 @@ export class ShopStore {
         const version = this.db.prepare("PRAGMA user_version").get() as {
           user_version: number;
         };
-        if (version.user_version !== 0 && version.user_version !== 2)
+        if (
+          version.user_version !== 0 &&
+          version.user_version !== 2 &&
+          version.user_version !== 3
+        )
           throw new ShopError(
             "unsupported_schema",
             "Shop schema needs qualification before use",
@@ -194,9 +205,12 @@ export class ShopStore {
           (!required.every((name) => existing.includes(name)) ||
             existing.some(
               (name) =>
-                ![...required, "dataset_metadata", "shop_metadata"].includes(
-                  name,
-                ),
+                ![
+                  ...required,
+                  "dataset_metadata",
+                  "shop_metadata",
+                  "cart_commands",
+                ].includes(name),
             ))
         )
           throw new ShopError(
@@ -208,6 +222,7 @@ export class ShopStore {
           CREATE TABLE IF NOT EXISTS carts (id TEXT PRIMARY KEY, budget_cents INTEGER NOT NULL);
           CREATE TABLE IF NOT EXISTS cart_lines (cart_id TEXT NOT NULL REFERENCES carts(id), product_id TEXT NOT NULL REFERENCES products(id), quantity INTEGER NOT NULL CHECK(quantity>0), PRIMARY KEY(cart_id,product_id));
           CREATE TABLE IF NOT EXISTS shop_metadata(id INTEGER PRIMARY KEY CHECK(id=1),instance_id TEXT NOT NULL);
+          CREATE TABLE IF NOT EXISTS cart_commands(request_id TEXT PRIMARY KEY,intent_json TEXT NOT NULL,effect_json TEXT NOT NULL,created_at TEXT NOT NULL);
           CREATE TABLE IF NOT EXISTS orders (id INTEGER PRIMARY KEY AUTOINCREMENT, cart_id TEXT NOT NULL, lines_json TEXT NOT NULL, total_cents INTEGER NOT NULL, created_at TEXT NOT NULL);
         `);
         const cartColumns = (
@@ -267,7 +282,7 @@ export class ShopStore {
             "Shop has broken foreign-key relationships",
           );
         this.state();
-        this.db.exec("PRAGMA user_version=2");
+        this.db.exec("PRAGMA user_version=3");
       });
       this.db.exec("PRAGMA journal_mode=WAL");
       this.state();
@@ -379,8 +394,13 @@ export class ShopStore {
     const checkout_token = createHash("sha256")
       .update(JSON.stringify(binding))
       .digest("hex");
+    const products = this.products();
+    const shop_token = createHash("sha256")
+      .update(JSON.stringify({ ...binding, products }))
+      .digest("hex");
     return {
-      products: this.products(),
+      products,
+      shop_token,
       cart,
       budget_cents: current.budget_cents,
       total_cents,
@@ -413,6 +433,15 @@ export class ShopStore {
     quantity: number,
     expectedRevision: number,
   ): ShopState {
+    return this.transaction(() =>
+      this.addWithin(productId, quantity, expectedRevision),
+    );
+  }
+  private addWithin(
+    productId: string,
+    quantity: number,
+    expectedRevision: number,
+  ): ShopState {
     id(productId, "Product ID");
     safe(quantity, "Quantity", 1);
     safe(expectedRevision, "Expected product revision", 1);
@@ -421,51 +450,152 @@ export class ShopStore {
         "invalid_quantity",
         "Quantity must be between 1 and 10",
       );
-    return this.transaction(() => {
-      const row = this.product(productId);
-      if (!row) throw new ShopError("not_found", "Product not found");
-      if (row.revision !== expectedRevision)
-        throw new ShopError(
-          "stale_product",
-          "Product changed; refresh before adding",
-        );
-      const existing = this.db
-        .prepare(
-          "SELECT quantity FROM cart_lines WHERE cart_id='demo' AND product_id=?",
-        )
-        .get(productId) as { quantity: number } | undefined;
-      const nextQuantity = (existing?.quantity || 0) + quantity;
-      safe(nextQuantity, "Cart quantity", 1);
-      if (nextQuantity > row.stock)
-        throw new ShopError(
-          "out_of_stock",
-          "Requested quantity exceeds current stock",
-        );
-      const current = this.state();
-      if (
-        BigInt(current.total_cents) +
-          BigInt(row.price_cents) * BigInt(quantity) >
-        BigInt(current.budget_cents)
+    const row = this.product(productId);
+    if (!row) throw new ShopError("not_found", "Product not found");
+    if (row.revision !== expectedRevision)
+      throw new ShopError(
+        "stale_product",
+        "Product changed; refresh before adding",
+      );
+    const existing = this.db
+      .prepare(
+        "SELECT quantity FROM cart_lines WHERE cart_id='demo' AND product_id=?",
       )
-        throw new ShopError("over_budget", "Cart would exceed its budget");
-      this.advanceCart();
-      this.db
-        .prepare(
-          "INSERT INTO cart_lines VALUES ('demo',?,?) ON CONFLICT(cart_id,product_id) DO UPDATE SET quantity=excluded.quantity",
-        )
-        .run(productId, nextQuantity);
-      return this.state();
-    });
+      .get(productId) as { quantity: number } | undefined;
+    const nextQuantity = (existing?.quantity || 0) + quantity;
+    safe(nextQuantity, "Cart quantity", 1);
+    if (nextQuantity > row.stock)
+      throw new ShopError(
+        "out_of_stock",
+        "Requested quantity exceeds current stock",
+      );
+    const current = this.state();
+    if (
+      BigInt(current.total_cents) + BigInt(row.price_cents) * BigInt(quantity) >
+      BigInt(current.budget_cents)
+    )
+      throw new ShopError("over_budget", "Cart would exceed its budget");
+    this.advanceCart();
+    this.db
+      .prepare(
+        "INSERT INTO cart_lines VALUES ('demo',?,?) ON CONFLICT(cart_id,product_id) DO UPDATE SET quantity=excluded.quantity",
+      )
+      .run(productId, nextQuantity);
+    return this.state();
   }
   remove(productId: string): ShopState {
+    return this.transaction(() => this.removeWithin(productId));
+  }
+  private removeWithin(productId: string): ShopState {
     id(productId, "Product ID");
-    return this.transaction(() => {
-      const removed = this.db
-        .prepare("DELETE FROM cart_lines WHERE cart_id='demo' AND product_id=?")
-        .run(productId);
-      if (removed.changes) this.advanceCart();
-      return this.state();
-    });
+    const removed = this.db
+      .prepare("DELETE FROM cart_lines WHERE cart_id='demo' AND product_id=?")
+      .run(productId);
+    if (removed.changes) this.advanceCart();
+    return this.state();
+  }
+
+  command(value: CartCommand, guard?: () => void) {
+    const parsed = cartCommandInput.safeParse(value);
+    if (!parsed.success)
+      throw new ShopError("invalid_request", "Invalid reviewed bag request");
+    const input = parsed.data,
+      canonical = cartCommandKey(input);
+    return this.transaction(
+      () => {
+        const prior = this.db
+          .prepare("SELECT * FROM cart_commands WHERE request_id=?")
+          .get(input.request_id) as
+          | { intent_json: string; effect_json: string; created_at: string }
+          | undefined;
+        if (prior) {
+          if (prior.intent_json !== canonical)
+            throw new ShopError(
+              "request_reused",
+              "Bag request ID belongs to another update; inspect its original request",
+            );
+          let effect;
+          try {
+            effect = cartEffect.parse(JSON.parse(prior.effect_json));
+          } catch {
+            throw new ShopError(
+              "invalid_state",
+              "Original bag acknowledgement is invalid",
+            );
+          }
+          const state = this.state();
+          const delta =
+            BigInt(effect.after_quantity) - BigInt(effect.before_quantity);
+          const revisionDelta =
+            BigInt(effect.after_revision) - BigInt(effect.before_revision);
+          if (
+            effect.request_id !== input.request_id ||
+            effect.action !== input.action ||
+            effect.product_id !== input.product_id ||
+            effect.state_id !== state.state_id ||
+            !Number.isFinite(Date.parse(prior.created_at)) ||
+            (input.action === "add"
+              ? delta !== BigInt(input.quantity) || revisionDelta !== 1n
+              : effect.after_quantity !== 0 ||
+                revisionDelta !== (effect.before_quantity > 0 ? 1n : 0n))
+          )
+            throw new ShopError(
+              "invalid_state",
+              "Original bag acknowledgement is incoherent",
+            );
+          return {
+            intent: input,
+            effect,
+            created_at: prior.created_at,
+            replayed: true,
+            state: this.state(),
+          };
+        }
+        const before = this.state();
+        if (input.expected_shop_token !== before.shop_token)
+          throw new ShopError(
+            "stale_shop",
+            "Shop or bag changed; review the current view before another update",
+          );
+        if (
+          input.action === "remove" &&
+          !before.products.some((product) => product.id === input.product_id)
+        )
+          throw new ShopError("not_found", "Product not found");
+        const after =
+          input.action === "add"
+            ? this.addWithin(input.product_id, input.quantity, input.revision)
+            : this.removeWithin(input.product_id);
+        const effect = {
+          request_id: input.request_id,
+          action: input.action,
+          product_id: input.product_id,
+          state_id: before.state_id,
+          cart_id: before.cart_id,
+          before_revision: before.cart_revision,
+          after_revision: after.cart_revision,
+          before_quantity:
+            before.cart.find((line) => line.product_id === input.product_id)
+              ?.quantity ?? 0,
+          after_quantity:
+            after.cart.find((line) => line.product_id === input.product_id)
+              ?.quantity ?? 0,
+        };
+        const created_at = new Date().toISOString();
+        this.db
+          .prepare("INSERT INTO cart_commands VALUES (?,?,?,?)")
+          .run(input.request_id, canonical, JSON.stringify(effect), created_at);
+        return {
+          intent: input,
+          effect,
+          created_at,
+          replayed: false,
+          state: after,
+        };
+      },
+      "IMMEDIATE",
+      guard,
+    );
   }
 
   checkout(intent: CheckoutIntent, guard?: () => void): CheckoutResult {
@@ -582,10 +712,20 @@ export class ShopStore {
     const read = () => ({
       state: this.state(),
       carts: this.db.prepare("SELECT * FROM carts ORDER BY id").all(),
-      cart_lines: this.db.prepare("SELECT * FROM cart_lines ORDER BY cart_id,product_id").all(),
+      cart_lines: this.db
+        .prepare("SELECT * FROM cart_lines ORDER BY cart_id,product_id")
+        .all(),
       orders: this.orders(),
-      dataset_metadata: this.db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name='dataset_metadata'").get()
-        ? this.db.prepare("SELECT * FROM dataset_metadata ORDER BY rowid").all() : [],
+      cart_commands: this.db
+        .prepare("SELECT * FROM cart_commands ORDER BY created_at,request_id")
+        .all(),
+      dataset_metadata: this.db
+        .prepare(
+          "SELECT 1 FROM sqlite_master WHERE type='table' AND name='dataset_metadata'",
+        )
+        .get()
+        ? this.db.prepare("SELECT * FROM dataset_metadata ORDER BY rowid").all()
+        : [],
     });
     return this.inTransaction ? read() : this.transaction(read, "DEFERRED");
   }

@@ -81,10 +81,10 @@ export class ChatReceipt {
     outputRoot?: string,
     writer = publish,
   ) {
-    const root = resolve(outputRoot ?? ".runs");
+    const root = resolve(/* turbopackIgnore: true */ outputRoot ?? ".runs");
     await mkdir(root, { recursive: true, mode: 0o700 });
     const runId = randomUUID(),
-      directory = join(root, runId);
+      directory = join(/* turbopackIgnore: true */ root, runId);
     await mkdir(directory, { mode: 0o700 });
     const value = new ChatReceipt(
       join(directory, "receipt.json"),

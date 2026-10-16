@@ -22,7 +22,7 @@ test.beforeEach(async ({ request, page }) => {
   const db = new DatabaseSync(path);
   try {
     db.exec(
-      "BEGIN IMMEDIATE;DELETE FROM cart_lines;DELETE FROM orders;DELETE FROM sqlite_sequence WHERE name='orders';UPDATE carts SET revision=1,budget_cents=15000 WHERE id='demo';",
+      "BEGIN IMMEDIATE;DELETE FROM cart_commands;DELETE FROM cart_lines;DELETE FROM orders;DELETE FROM sqlite_sequence WHERE name='orders';UPDATE carts SET revision=1,budget_cents=15000 WHERE id='demo';",
     );
     for (const [id, price, stock] of [
       ["mug-01", 2800, 4],
@@ -121,7 +121,7 @@ test("price changed after the displayed bag requires a new shopper review", asyn
     .filter({ has: page.getByRole("heading", { name: "Stoneware mug" }) })
     .getByRole("button", { name: /Add to bag/ })
     .click();
-  const displayed = await (await added).json();
+  const displayed = (await (await added).json()).state;
   await expect(page.locator(".bag-lines")).toContainText("$28.00");
   // Hold the old read view while the actual persisted price/revision changes.
   await page.route("**/api/state", (route) =>
@@ -160,4 +160,143 @@ test("price changed after the displayed bag requires a new shopper review", asyn
   await expect(page.getByRole("status")).toContainText("$29.00");
   expect(read().orders).toHaveLength(1);
   expect(read().orders[0].total_cents).toBe(2900);
+});
+
+test("uncertain add survives reload and confirms its original update without touching a newer bag", async ({
+  page,
+  request,
+}) => {
+  await page.goto("/");
+  await page.route(
+    "**/api/cart",
+    async (route) => {
+      const response = await route.fetch();
+      expect(response.status()).toBe(200);
+      await route.abort("failed");
+    },
+    { times: 1 },
+  );
+  await page
+    .locator(".product")
+    .filter({ has: page.getByRole("heading", { name: "Stoneware mug" }) })
+    .getByRole("button", { name: /Add to bag/ })
+    .click();
+  await expect(
+    page.getByRole("button", { name: "Check previous bag update" }),
+  ).toBeEnabled();
+  expect(read().cart[0].quantity).toBe(1);
+  await page.reload();
+  await expect(
+    page.getByRole("button", { name: "Check previous bag update" }),
+  ).toBeEnabled();
+  await expect(
+    page.getByRole("button", { name: "Place synthetic order" }),
+  ).toBeDisabled();
+  const current = await (await request.get("/api/state")).json();
+  const other = await request.post("/api/cart", {
+    data: {
+      action: "add",
+      product_id: "bottle-01",
+      quantity: 1,
+      revision: 1,
+      request_id: randomUUID(),
+      expected_shop_token: current.shop_token,
+    },
+  });
+  expect(other.status()).toBe(200);
+  const before = read();
+  await page.getByRole("button", { name: "Check previous bag update" }).click();
+  await expect(page.getByRole("status")).toContainText(
+    "Previous bag update confirmed",
+  );
+  await expect(page.locator(".bag-lines")).toContainText("Steel bottle");
+  expect(read()).toEqual(before);
+  expect(read().cart.find((row) => row.product_id === "mug-01")?.quantity).toBe(
+    1,
+  );
+  expect(
+    await page.evaluate(() => sessionStorage.getItem("nook.cartIntent")),
+  ).toBeNull();
+});
+
+test("uncertain remove recovery preserves a later entry of the same item", async ({
+  page,
+  request,
+}) => {
+  await page.goto("/");
+  await page
+    .locator(".product")
+    .filter({ has: page.getByRole("heading", { name: "Stoneware mug" }) })
+    .getByRole("button", { name: /Add to bag/ })
+    .click();
+  await expect(page.locator(".bag-lines")).toContainText("Stoneware mug");
+  await page.route(
+    "**/api/cart",
+    async (route) => {
+      const response = await route.fetch();
+      expect(response.status()).toBe(200);
+      await route.abort("failed");
+    },
+    { times: 1 },
+  );
+  await page
+    .locator(".bag-line")
+    .getByRole("button", { name: "Remove" })
+    .click();
+  await expect(
+    page.getByRole("button", { name: "Check previous bag update" }),
+  ).toBeEnabled();
+  const current = await (await request.get("/api/state")).json();
+  expect(
+    (
+      await request.post("/api/cart", {
+        data: {
+          action: "add",
+          product_id: "mug-01",
+          quantity: 1,
+          revision: 1,
+          request_id: randomUUID(),
+          expected_shop_token: current.shop_token,
+        },
+      })
+    ).status(),
+  ).toBe(200);
+  const before = read();
+  await page.reload();
+  await page.getByRole("button", { name: "Check previous bag update" }).click();
+  await expect(page.getByRole("status")).toContainText(
+    "Previous bag update confirmed",
+  );
+  await expect(page.locator(".bag-lines")).toContainText("Stoneware mug");
+  expect(read()).toEqual(before);
+});
+
+test("safe-integer boundary prices and order acknowledgements retain their final cent", async ({
+  page,
+}) => {
+  const db = new DatabaseSync(path);
+  try {
+    db.prepare(
+      "UPDATE products SET price_cents=?,stock=1,revision=2 WHERE id='mug-01'",
+    ).run(Number.MAX_SAFE_INTEGER);
+    db.prepare("UPDATE carts SET budget_cents=? WHERE id='demo'").run(
+      Number.MAX_SAFE_INTEGER,
+    );
+  } finally {
+    db.close();
+  }
+  await page.goto("/");
+  const product = page
+    .locator(".product")
+    .filter({ has: page.getByRole("heading", { name: "Stoneware mug" }) });
+  await expect(product).toContainText("$90,071,992,547,409.91");
+  await product.getByRole("button", { name: /Add to bag/ }).click();
+  await expect(page.locator(".bag-lines")).toContainText(
+    "$90,071,992,547,409.91",
+  );
+  await page.getByRole("button", { name: "Place synthetic order" }).click();
+  await expect(page.getByRole("status")).toContainText(
+    "$90,071,992,547,409.91",
+  );
+  expect(read().orders[0].total_cents).toBe(Number.MAX_SAFE_INTEGER);
 });

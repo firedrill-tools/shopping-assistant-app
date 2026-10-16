@@ -2,11 +2,21 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Product, ShopState } from "@/lib/store";
+import {
+  cartCommandInput,
+  cartCommandKey,
+  type CartCommand,
+} from "@/lib/cart-contracts";
+import { money } from "@/lib/money";
 
 type Message = { role: "user" | "assistant"; content: string };
 const categories = ["All", "Tabletop", "Bath", "Lighting", "Everyday"];
-const tones: Record<string, string> = { Tabletop: "tone-clay", Bath: "tone-sand", Lighting: "tone-olive", Everyday: "tone-blue" };
-const money = (cents: number) => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(cents / 100);
+const tones: Record<string, string> = {
+  Tabletop: "tone-clay",
+  Bath: "tone-sand",
+  Lighting: "tone-olive",
+  Everyday: "tone-blue",
+};
 
 export default function Page() {
   const [state, setState] = useState<ShopState | null>(null);
@@ -18,35 +28,146 @@ export default function Page() {
   const [draft, setDraft] = useState("");
   const [chatBusy, setChatBusy] = useState(false);
   const [chatError, setChatError] = useState("");
+  const [cartRecovery, setCartRecovery] = useState(false);
+  const cartIntent = useRef<CartCommand | null>(null);
   const [checkoutRecovery, setCheckoutRecovery] = useState(false);
-  const checkoutIntent = useRef<{ request_id: string; expected_cart_token: string } | null>(null);
+  const checkoutIntent = useRef<{
+    request_id: string;
+    expected_cart_token: string;
+  } | null>(null);
 
   const refresh = useCallback(async () => {
     try {
       const response = await fetch("/api/state", { cache: "no-store" });
       if (!response.ok) throw new Error("Shop state is unavailable");
       setState(await response.json());
-    } catch (cause) { setError(cause instanceof Error ? cause.message : "Could not load shop"); }
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Could not load shop");
+    }
   }, []);
 
-  useEffect(() => { void refresh(); const timer = window.setInterval(() => void refresh(), 4000);
-    return () => window.clearInterval(timer); }, [refresh]);
+  useEffect(() => {
+    void refresh();
+    const timer = window.setInterval(() => void refresh(), 4000);
+    return () => window.clearInterval(timer);
+  }, [refresh]);
 
-  async function cartCommand(body: Record<string, unknown>) {
-    setBusy(true); setError(""); setNotice("");
+  function clearCartIntent() {
+    cartIntent.current = null;
+    setCartRecovery(false);
     try {
-      const response = await fetch("/api/cart", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+      sessionStorage.removeItem("nook.cartIntent");
+    } catch {
+      /* A valid acknowledgement still resolves this request. */
+    }
+  }
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem("nook.cartIntent");
+      if (raw) {
+        const saved = cartCommandInput.safeParse(JSON.parse(raw));
+        if (saved.success) {
+          cartIntent.current = saved.data;
+          setCartRecovery(true);
+        } else sessionStorage.removeItem("nook.cartIntent");
+      }
+    } catch {
+      /* New requests must persist successfully before dispatch. */
+    }
+  }, []);
+
+  async function cartCommand(
+    body?:
+      | {
+          action: "add";
+          product_id: string;
+          quantity: number;
+          revision: number;
+        }
+      | { action: "remove"; product_id: string },
+  ) {
+    if (!state || busy || (cartIntent.current && body)) return;
+    const intent =
+      cartIntent.current ??
+      (body
+        ? cartCommandInput.parse({
+            ...body,
+            request_id: crypto.randomUUID(),
+            expected_shop_token: state.shop_token,
+          })
+        : null);
+    if (!intent) return;
+    try {
+      sessionStorage.setItem("nook.cartIntent", JSON.stringify(intent));
+    } catch {
+      setError(
+        "This browser cannot retain the bag request for recovery. Enable session storage before updating the bag.",
+      );
+      return;
+    }
+    cartIntent.current = intent;
+    setBusy(true);
+    setError("");
+    setNotice("");
+    try {
+      const response = await fetch("/api/cart", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(intent),
+      });
       const result = await response.json();
-      if (!response.ok) throw new Error(result.message || "Cart update failed");
-      setState(result); setNotice(body.action === "add" ? "Added to cart." : "Removed from cart.");
-    } catch (cause) { setError(cause instanceof Error ? cause.message : "Cart update failed"); await refresh(); }
-    finally { setBusy(false); }
+      if (!response.ok) {
+        if (
+          [
+            "stale_shop",
+            "stale_product",
+            "over_budget",
+            "out_of_stock",
+            "revision_limit",
+            "invalid_request",
+            "invalid_value",
+            "invalid_quantity",
+            "not_found",
+          ].includes(result.error)
+        )
+          clearCartIntent();
+        throw new Error(result.message || "Bag update failed");
+      }
+      const acknowledged = cartCommandInput.safeParse(result.intent);
+      if (
+        !acknowledged.success ||
+        cartCommandKey(acknowledged.data) !== cartCommandKey(intent) ||
+        result.effect?.request_id !== intent.request_id
+      )
+        throw new Error(
+          "Bag acknowledgement changed; recover the original request before another update.",
+        );
+      clearCartIntent();
+      setState(result.state);
+      setNotice(
+        result.replayed
+          ? "Previous bag update confirmed. Current bag is shown."
+          : intent.action === "add"
+            ? "Added to cart."
+            : "Removed from cart.",
+      );
+    } catch (cause) {
+      setCartRecovery(cartIntent.current !== null);
+      setError(cause instanceof Error ? cause.message : "Bag update failed");
+      await refresh();
+    } finally {
+      setBusy(false);
+    }
   }
 
   function clearCheckoutIntent() {
     checkoutIntent.current = null;
     setCheckoutRecovery(false);
-    try { sessionStorage.removeItem("nook.checkoutIntent"); } catch { /* A valid acknowledgement still resolves this request. */ }
+    try {
+      sessionStorage.removeItem("nook.checkoutIntent");
+    } catch {
+      /* A valid acknowledgement still resolves this request. */
+    }
   }
 
   useEffect(() => {
@@ -54,88 +175,395 @@ export default function Page() {
       const raw = sessionStorage.getItem("nook.checkoutIntent");
       if (raw) {
         const saved = JSON.parse(raw);
-        if (saved && Object.keys(saved).sort().join(",") === "expected_cart_token,request_id" && typeof saved.request_id === "string" && saved.request_id.trim() === saved.request_id && saved.request_id.length > 0 && saved.request_id.length <= 100 && typeof saved.expected_cart_token === "string" && /^[a-f0-9]{64}$/.test(saved.expected_cart_token)) {
-          checkoutIntent.current = saved; setCheckoutRecovery(true);
+        if (
+          saved &&
+          Object.keys(saved).sort().join(",") ===
+            "expected_cart_token,request_id" &&
+          typeof saved.request_id === "string" &&
+          saved.request_id.trim() === saved.request_id &&
+          saved.request_id.length > 0 &&
+          saved.request_id.length <= 100 &&
+          typeof saved.expected_cart_token === "string" &&
+          /^[a-f0-9]{64}$/.test(saved.expected_cart_token)
+        ) {
+          checkoutIntent.current = saved;
+          setCheckoutRecovery(true);
         } else sessionStorage.removeItem("nook.checkoutIntent");
       }
-    } catch { /* Persisting a new request is checked before dispatch. */ }
+    } catch {
+      /* Persisting a new request is checked before dispatch. */
+    }
   }, []);
 
   async function checkout() {
-    if (!state) return;
-    const intent = checkoutIntent.current ?? { request_id: crypto.randomUUID(), expected_cart_token: state.checkout_token };
-    try { sessionStorage.setItem("nook.checkoutIntent", JSON.stringify(intent)); }
-    catch { setError("This browser cannot retain the checkout for recovery. Enable session storage before placing the order."); return; }
-    checkoutIntent.current = intent;
-    setBusy(true); setError(""); setNotice("");
+    if (!state || busy || cartIntent.current) return;
+    const intent = checkoutIntent.current ?? {
+      request_id: crypto.randomUUID(),
+      expected_cart_token: state.checkout_token,
+    };
     try {
-      const response = await fetch("/api/checkout", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(intent) });
+      sessionStorage.setItem("nook.checkoutIntent", JSON.stringify(intent));
+    } catch {
+      setError(
+        "This browser cannot retain the checkout for recovery. Enable session storage before placing the order.",
+      );
+      return;
+    }
+    checkoutIntent.current = intent;
+    setBusy(true);
+    setError("");
+    setNotice("");
+    try {
+      const response = await fetch("/api/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(intent),
+      });
       const result = await response.json();
       if (!response.ok) {
-        if (["stale_cart", "empty_cart", "over_budget", "out_of_stock", "revision_limit", "invalid_request", "invalid_value"].includes(result.error)) clearCheckoutIntent();
+        if (
+          [
+            "stale_cart",
+            "empty_cart",
+            "over_budget",
+            "out_of_stock",
+            "revision_limit",
+            "invalid_request",
+            "invalid_value",
+          ].includes(result.error)
+        )
+          clearCheckoutIntent();
         throw new Error(result.message || "Checkout failed");
       }
-      if (result.request_id !== intent.request_id || result.expected_cart_token !== intent.expected_cart_token) throw new Error("Checkout acknowledgement changed; inspect the original request before retrying.");
+      if (
+        result.request_id !== intent.request_id ||
+        result.expected_cart_token !== intent.expected_cart_token
+      )
+        throw new Error(
+          "Checkout acknowledgement changed; inspect the original request before retrying.",
+        );
       clearCheckoutIntent();
-      setState(result.state); setNotice(result.replayed ? `Order ${result.order_id} was already placed for ${money(result.total_cents)}.` : `Order ${result.order_id} placed for ${money(result.total_cents)}.`);
-    } catch (cause) { setCheckoutRecovery(checkoutIntent.current !== null); setError(cause instanceof Error ? cause.message : "Checkout failed"); await refresh(); }
-    finally { setBusy(false); }
+      setState(result.state);
+      setNotice(
+        result.replayed
+          ? `Order ${result.order_id} was already placed for ${money(result.total_cents)}.`
+          : `Order ${result.order_id} placed for ${money(result.total_cents)}.`,
+      );
+    } catch (cause) {
+      setCheckoutRecovery(checkoutIntent.current !== null);
+      setError(cause instanceof Error ? cause.message : "Checkout failed");
+      await refresh();
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function sendChat(text = draft) {
     const content = text.trim();
     if (!content || chatBusy) return;
-    if (content.length > 2000) { setChatError("Keep your question to 2,000 characters."); return; }
+    if (content.length > 2000) {
+      setChatError("Keep your question to 2,000 characters.");
+      return;
+    }
     setChatError("");
     const next: Message[] = [...messages, { role: "user", content }];
-    setMessages(next); setDraft(""); setChatBusy(true);
+    setMessages(next);
+    setDraft("");
+    setChatBusy(true);
     try {
-      const response = await fetch("/api/chat", { method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: next.slice(-12) }) });
+      const response = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messages: next.slice(-12) }),
+      });
       const result = await response.json();
-      setMessages([...next, { role: "assistant", content: response.ok ? result.reply || "I could not form a reply." : result.error || "Assistant unavailable." }]);
+      setMessages([
+        ...next,
+        {
+          role: "assistant",
+          content: response.ok
+            ? result.reply || "I could not form a reply."
+            : result.error || "Assistant unavailable.",
+        },
+      ]);
       await refresh();
-    } catch { setMessages([...next, { role: "assistant", content: "Assistant connection failed." }]); }
-    finally { setChatBusy(false); }
+    } catch {
+      setMessages([
+        ...next,
+        { role: "assistant", content: "Assistant connection failed." },
+      ]);
+    } finally {
+      setChatBusy(false);
+    }
   }
 
-  const visible = state?.products.filter((product) => category === "All" || product.category === category) || [];
-  const cartCount = state?.cart.reduce((count, line) => count + line.quantity, 0) || 0;
-  return <main className="app-shell">
-    <header className="topbar"><div className="brand"><span className="brand-mark">N</span><span>NOOK</span></div>
-      <nav><a href="#collection">Collection</a><a href="#assistant">Ask Nook</a></nav><div className="top-cart">BAG / {String(cartCount).padStart(2, "0")}</div></header>
-    <div className="layout">
-      <section className="content">
-        <div className="hero"><div className="hero-copy"><div className="eyebrow">THE CONSIDERED HOME / 2026</div>
-          <h1>Good things,<br/><em>within reach.</em></h1><p>A small collection of useful pieces. Shop with a clear budget, current stock, and an assistant that can help you compare options.</p>
-          <a href="#collection" className="hero-link">Explore the collection <span>↗</span></a></div>
-          <div className="hero-art"><span className="hero-orbit orbit-one"/><span className="hero-orbit orbit-two"/><span className="hero-object"/><span className="hero-caption">OBJECTS FOR EVERY DAY<br/>NO. 001—006</span></div></div>
-        <div className="collection-head" id="collection"><div><div className="eyebrow">THE COLLECTION</div><h2>Made for living.</h2></div>
-          <p>Six pieces, selected for quiet utility.</p></div>
-        <div className="filters">{categories.map((item) => <button key={item} className={item === category ? "active" : ""} onClick={() => setCategory(item)}>{item}</button>)}</div>
-        {!state ? <p className="loading">Loading current stock…</p> : <div className="product-grid">{visible.map((product: Product, index) => <article className="product" key={product.id}>
-          <div className={`product-visual ${tones[product.category]}`}><span className="visual-index">0{index + 1} / {product.category.toUpperCase()}</span><span className="product-shape"/><span className="visual-id">{product.id.toUpperCase()}</span></div>
-          <div className="product-info"><div><h3>{product.name}</h3><p>{product.description}</p></div><strong>{money(product.price_cents)}</strong></div>
-          <div className="product-bottom"><span className={product.stock ? "in-stock" : "sold-out"}>{product.stock ? `${product.stock} available` : "Unavailable"}</span>
-            <button disabled={!product.stock || busy} onClick={() => void cartCommand({ action: "add", product_id: product.id, quantity: 1, revision: product.revision })}>{product.stock ? "Add to bag ↗" : "Sold out"}</button></div>
-        </article>)}</div>}
-      </section>
+  const visible =
+    state?.products.filter(
+      (product) => category === "All" || product.category === category,
+    ) || [];
+  const cartCount =
+    state?.cart.reduce((count, line) => count + line.quantity, 0) || 0;
+  return (
+    <main className="app-shell">
+      <header className="topbar">
+        <div className="brand">
+          <span className="brand-mark">N</span>
+          <span>NOOK</span>
+        </div>
+        <nav>
+          <a href="#collection">Collection</a>
+          <a href="#assistant">Ask Nook</a>
+        </nav>
+        <div className="top-cart">
+          BAG / {String(cartCount).padStart(2, "0")}
+        </div>
+      </header>
+      <div className="layout">
+        <section className="content">
+          <div className="hero">
+            <div className="hero-copy">
+              <div className="eyebrow">THE CONSIDERED HOME / 2026</div>
+              <h1>
+                Good things,
+                <br />
+                <em>within reach.</em>
+              </h1>
+              <p>
+                A small collection of useful pieces. Shop with a clear budget,
+                current stock, and an assistant that can help you compare
+                options.
+              </p>
+              <a href="#collection" className="hero-link">
+                Explore the collection <span>↗</span>
+              </a>
+            </div>
+            <div className="hero-art">
+              <span className="hero-orbit orbit-one" />
+              <span className="hero-orbit orbit-two" />
+              <span className="hero-object" />
+              <span className="hero-caption">
+                OBJECTS FOR EVERY DAY
+                <br />
+                NO. 001—006
+              </span>
+            </div>
+          </div>
+          <div className="collection-head" id="collection">
+            <div>
+              <div className="eyebrow">THE COLLECTION</div>
+              <h2>Made for living.</h2>
+            </div>
+            <p>Six pieces, selected for quiet utility.</p>
+          </div>
+          <div className="filters">
+            {categories.map((item) => (
+              <button
+                key={item}
+                className={item === category ? "active" : ""}
+                onClick={() => setCategory(item)}
+              >
+                {item}
+              </button>
+            ))}
+          </div>
+          {!state ? (
+            <p className="loading">Loading current stock…</p>
+          ) : (
+            <div className="product-grid">
+              {visible.map((product: Product, index) => (
+                <article className="product" key={product.id}>
+                  <div className={`product-visual ${tones[product.category]}`}>
+                    <span className="visual-index">
+                      0{index + 1} / {product.category.toUpperCase()}
+                    </span>
+                    <span className="product-shape" />
+                    <span className="visual-id">
+                      {product.id.toUpperCase()}
+                    </span>
+                  </div>
+                  <div className="product-info">
+                    <div>
+                      <h3>{product.name}</h3>
+                      <p>{product.description}</p>
+                    </div>
+                    <strong>{money(product.price_cents)}</strong>
+                  </div>
+                  <div className="product-bottom">
+                    <span className={product.stock ? "in-stock" : "sold-out"}>
+                      {product.stock
+                        ? `${product.stock} available`
+                        : "Unavailable"}
+                    </span>
+                    <button
+                      disabled={!product.stock || busy || cartRecovery}
+                      onClick={() =>
+                        void cartCommand({
+                          action: "add",
+                          product_id: product.id,
+                          quantity: 1,
+                          revision: product.revision,
+                        })
+                      }
+                    >
+                      {product.stock ? "Add to bag ↗" : "Sold out"}
+                    </button>
+                  </div>
+                </article>
+              ))}
+            </div>
+          )}
+        </section>
 
-      <aside className="sidebar"><section className="bag-panel"><div className="panel-top"><div className="eyebrow">YOUR BAG</div><span>{String(cartCount).padStart(2, "0")} ITEMS</span></div>
-        <h2>A good fit.</h2><div className="budget"><div><span>YOUR BUDGET</span><strong>{state ? money(state.budget_cents) : "—"}</strong></div>
-          <div><span>REMAINING</span><strong>{state ? money(state.remaining_cents) : "—"}</strong></div></div>
-        <div className="bag-lines">{!state?.cart.length ? <p className="empty-bag">Your bag is empty. Add a piece from the collection to begin.</p> : state.cart.map((line) => <div className="bag-line" key={line.product_id}><div><strong>{line.name}</strong><small>Qty {line.quantity} · {money(line.price_cents)} each</small></div><button onClick={() => void cartCommand({ action: "remove", product_id: line.product_id })} disabled={busy}>Remove</button></div>)}</div>
-        <div className="bag-footer"><div><span>Subtotal</span><strong>{state ? money(state.total_cents) : "—"}</strong></div>
-          <button className="checkout" disabled={(!state?.cart.length && !checkoutRecovery) || busy} onClick={() => void checkout()}>{checkoutRecovery ? "Check previous checkout" : "Place synthetic order"} <span>↗</span></button>
-          <p>Stock and budget are checked again at checkout.</p></div>
-        {error && <div className="error" role="alert">{error}</div>}{notice && <div className="notice" role="status">{notice}</div>}</section>
-        <section className="assistant" id="assistant"><div className="assistant-head"><span className="assistant-icon">✦</span><div><div className="eyebrow">SHOPPING COMPANION</div><h2>Ask Nook.</h2></div></div>
-          <p>Find alternatives, compare pieces, or check your remaining budget. The assistant can advise; you choose what goes in the bag.</p>
-          <div className="messages">{messages.length === 0 ? <div className="prompt-list"><button onClick={() => void sendChat("What is in stock under $40?")}>What is in stock under $40? ↗</button>
-            <button onClick={() => void sendChat("What is a good alternative to the linen bath towel?")}>Alternative to the linen towel ↗</button></div> : messages.map((message, index) => <div key={index} className={`message ${message.role}`}>{message.content}</div>)}</div>
-          {chatError && <p className="error" role="alert">{chatError}</p>}
-          <form onSubmit={(event) => { event.preventDefault(); void sendChat(); }}><input maxLength={2000} value={draft} onChange={(event) => setDraft(event.target.value)} placeholder="Ask about the collection…" aria-label="Ask about the collection"/><button disabled={chatBusy || !draft.trim()} aria-label="Send message">↗</button></form>
-          <small>Live chat requires a configured OpenAI model.</small></section></aside>
-    </div>
-  </main>;
+        <aside className="sidebar">
+          <section className="bag-panel">
+            <div className="panel-top">
+              <div className="eyebrow">YOUR BAG</div>
+              <span>{String(cartCount).padStart(2, "0")} ITEMS</span>
+            </div>
+            <h2>A good fit.</h2>
+            <div className="budget">
+              <div>
+                <span>YOUR BUDGET</span>
+                <strong>{state ? money(state.budget_cents) : "—"}</strong>
+              </div>
+              <div>
+                <span>REMAINING</span>
+                <strong>{state ? money(state.remaining_cents) : "—"}</strong>
+              </div>
+            </div>
+            <div className="bag-lines">
+              {!state?.cart.length ? (
+                <p className="empty-bag">
+                  Your bag is empty. Add a piece from the collection to begin.
+                </p>
+              ) : (
+                state.cart.map((line) => (
+                  <div className="bag-line" key={line.product_id}>
+                    <div>
+                      <strong>{line.name}</strong>
+                      <small>
+                        Qty {line.quantity} · {money(line.price_cents)} each
+                      </small>
+                    </div>
+                    <button
+                      onClick={() =>
+                        void cartCommand({
+                          action: "remove",
+                          product_id: line.product_id,
+                        })
+                      }
+                      disabled={busy || cartRecovery}
+                    >
+                      Remove
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
+            <div className="bag-footer">
+              <div>
+                <span>Subtotal</span>
+                <strong>{state ? money(state.total_cents) : "—"}</strong>
+              </div>
+              {cartRecovery && (
+                <button disabled={busy} onClick={() => void cartCommand()}>
+                  Check previous bag update
+                </button>
+              )}
+              <button
+                className="checkout"
+                disabled={
+                  (!state?.cart.length && !checkoutRecovery) ||
+                  busy ||
+                  cartRecovery
+                }
+                onClick={() => void checkout()}
+              >
+                {checkoutRecovery
+                  ? "Check previous checkout"
+                  : "Place synthetic order"}{" "}
+                <span>↗</span>
+              </button>
+              <p>Stock and budget are checked again at checkout.</p>
+            </div>
+            {error && (
+              <div className="error" role="alert">
+                {error}
+              </div>
+            )}
+            {notice && (
+              <div className="notice" role="status">
+                {notice}
+              </div>
+            )}
+          </section>
+          <section className="assistant" id="assistant">
+            <div className="assistant-head">
+              <span className="assistant-icon">✦</span>
+              <div>
+                <div className="eyebrow">SHOPPING COMPANION</div>
+                <h2>Ask Nook.</h2>
+              </div>
+            </div>
+            <p>
+              Find alternatives, compare pieces, or check your remaining budget.
+              The assistant can advise; you choose what goes in the bag.
+            </p>
+            <div className="messages">
+              {messages.length === 0 ? (
+                <div className="prompt-list">
+                  <button
+                    onClick={() => void sendChat("What is in stock under $40?")}
+                  >
+                    What is in stock under $40? ↗
+                  </button>
+                  <button
+                    onClick={() =>
+                      void sendChat(
+                        "What is a good alternative to the linen bath towel?",
+                      )
+                    }
+                  >
+                    Alternative to the linen towel ↗
+                  </button>
+                </div>
+              ) : (
+                messages.map((message, index) => (
+                  <div key={index} className={`message ${message.role}`}>
+                    {message.content}
+                  </div>
+                ))
+              )}
+            </div>
+            {chatError && (
+              <p className="error" role="alert">
+                {chatError}
+              </p>
+            )}
+            <form
+              onSubmit={(event) => {
+                event.preventDefault();
+                void sendChat();
+              }}
+            >
+              <input
+                maxLength={2000}
+                value={draft}
+                onChange={(event) => setDraft(event.target.value)}
+                placeholder="Ask about the collection…"
+                aria-label="Ask about the collection"
+              />
+              <button
+                disabled={chatBusy || !draft.trim()}
+                aria-label="Send message"
+              >
+                ↗
+              </button>
+            </form>
+            <small>Live chat requires a configured OpenAI model.</small>
+          </section>
+        </aside>
+      </div>
+    </main>
+  );
 }

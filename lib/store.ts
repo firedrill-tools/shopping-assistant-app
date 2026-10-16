@@ -578,6 +578,18 @@ export class ShopStore {
       return this.product(productId)!;
     });
   }
+  snapshot() {
+    const read = () => ({
+      state: this.state(),
+      carts: this.db.prepare("SELECT * FROM carts ORDER BY id").all(),
+      cart_lines: this.db.prepare("SELECT * FROM cart_lines ORDER BY cart_id,product_id").all(),
+      orders: this.orders(),
+      dataset_metadata: this.db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name='dataset_metadata'").get()
+        ? this.db.prepare("SELECT * FROM dataset_metadata ORDER BY rowid").all() : [],
+    });
+    return this.inTransaction ? read() : this.transaction(read, "DEFERRED");
+  }
+
   orders(): Order[] {
     return this.db.prepare("SELECT * FROM orders ORDER BY id").all() as Order[];
   }

@@ -8,3 +8,4 @@ tsconfig.tsbuildinfo
 .e2e/
 test-results/
 playwright-report/
+.runs/

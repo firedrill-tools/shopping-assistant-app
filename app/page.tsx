@@ -17,6 +17,7 @@ export default function Page() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [draft, setDraft] = useState("");
   const [chatBusy, setChatBusy] = useState(false);
+  const [chatError, setChatError] = useState("");
   const [checkoutRecovery, setCheckoutRecovery] = useState(false);
   const checkoutIntent = useRef<{ request_id: string; expected_cart_token: string } | null>(null);
 
@@ -84,6 +85,8 @@ export default function Page() {
   async function sendChat(text = draft) {
     const content = text.trim();
     if (!content || chatBusy) return;
+    if (content.length > 2000) { setChatError("Keep your question to 2,000 characters."); return; }
+    setChatError("");
     const next: Message[] = [...messages, { role: "user", content }];
     setMessages(next); setDraft(""); setChatBusy(true);
     try {
@@ -130,7 +133,8 @@ export default function Page() {
           <p>Find alternatives, compare pieces, or check your remaining budget. The assistant can advise; you choose what goes in the bag.</p>
           <div className="messages">{messages.length === 0 ? <div className="prompt-list"><button onClick={() => void sendChat("What is in stock under $40?")}>What is in stock under $40? ↗</button>
             <button onClick={() => void sendChat("What is a good alternative to the linen bath towel?")}>Alternative to the linen towel ↗</button></div> : messages.map((message, index) => <div key={index} className={`message ${message.role}`}>{message.content}</div>)}</div>
-          <form onSubmit={(event) => { event.preventDefault(); void sendChat(); }}><input value={draft} onChange={(event) => setDraft(event.target.value)} placeholder="Ask about the collection…" aria-label="Ask about the collection"/><button disabled={chatBusy || !draft.trim()} aria-label="Send message">↗</button></form>
+          {chatError && <p className="error" role="alert">{chatError}</p>}
+          <form onSubmit={(event) => { event.preventDefault(); void sendChat(); }}><input maxLength={2000} value={draft} onChange={(event) => setDraft(event.target.value)} placeholder="Ask about the collection…" aria-label="Ask about the collection"/><button disabled={chatBusy || !draft.trim()} aria-label="Send message">↗</button></form>
           <small>Live chat requires a configured OpenAI model.</small></section></aside>
     </div>
   </main>;

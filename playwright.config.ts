@@ -13,18 +13,29 @@ export default defineConfig({
     trace: "retain-on-failure",
     screenshot: "only-on-failure",
   },
-  webServer: {
-    command:
-      "tsx scripts/browser-state.ts && npm run start -- --hostname 127.0.0.1 --port 3302",
-    url: "http://127.0.0.1:3302",
-    reuseExistingServer: false,
-    timeout: 60000,
-    env: {
-      SHOP_DB: resolve(".e2e/shop.db"),
-      OPENAI_API_KEY: "",
-      OPENAI_MODEL: "",
-      NEXT_TELEMETRY_DISABLED: "1",
+  webServer: [
+    {
+      command: "tsx scripts/browser-model.ts",
+      url: "http://127.0.0.1:3303/health",
+      reuseExistingServer: false,
+      timeout: 30000,
+      gracefulShutdown: { signal: "SIGTERM", timeout: 3000 },
     },
-    gracefulShutdown: { signal: "SIGTERM", timeout: 3000 },
-  },
+    {
+      command:
+        "tsx scripts/browser-state.ts && npm run start -- --hostname 127.0.0.1 --port 3302",
+      url: "http://127.0.0.1:3302",
+      reuseExistingServer: false,
+      timeout: 60000,
+      env: {
+        SHOP_DB: resolve(".e2e/shop.db"),
+        OPENAI_API_KEY: "synthetic-not-a-provider-key",
+        OPENAI_MODEL: "gpt-synthetic",
+        OPENAI_BASE_URL: "http://127.0.0.1:3303/v1",
+        SHOP_CHAT_OUTPUT_ROOT: resolve(".e2e/runs"),
+        NEXT_TELEMETRY_DISABLED: "1",
+      },
+      gracefulShutdown: { signal: "SIGTERM", timeout: 3000 },
+    },
+  ],
 });

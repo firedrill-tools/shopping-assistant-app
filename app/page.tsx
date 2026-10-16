@@ -10,7 +10,6 @@ import {
 import { money } from "@/lib/money";
 
 type Message = { role: "user" | "assistant"; content: string };
-const categories = ["All", "Tabletop", "Bath", "Lighting", "Everyday"];
 const tones: Record<string, string> = {
   Tabletop: "tone-clay",
   Bath: "tone-sand",
@@ -297,12 +296,19 @@ export default function Page() {
     }
   }
 
+  const categories = [
+    "All",
+    ...new Set(state?.products.map((product) => product.category) ?? []),
+  ];
+  const activeCategory = categories.includes(category) ? category : "All";
   const visible =
     state?.products.filter(
-      (product) => category === "All" || product.category === category,
-    ) || [];
+      (product) =>
+        activeCategory === "All" || product.category === activeCategory,
+    ) ?? [];
   const cartCount =
-    state?.cart.reduce((count, line) => count + line.quantity, 0) || 0;
+    state?.cart.reduce((count, line) => count + BigInt(line.quantity), 0n) ??
+    0n;
   return (
     <main className="app-shell">
       <header className="topbar">
@@ -344,7 +350,8 @@ export default function Page() {
               <span className="hero-caption">
                 OBJECTS FOR EVERY DAY
                 <br />
-                NO. 001—006
+                NO. 001—
+                {state ? String(state.products.length).padStart(3, "0") : "…"}
               </span>
             </div>
           </div>
@@ -353,13 +360,16 @@ export default function Page() {
               <div className="eyebrow">THE COLLECTION</div>
               <h2>Made for living.</h2>
             </div>
-            <p>Six pieces, selected for quiet utility.</p>
+            <p>
+              {state ? `${state.products.length} pieces` : "A small collection"}
+              , selected for quiet utility.
+            </p>
           </div>
           <div className="filters">
             {categories.map((item) => (
               <button
                 key={item}
-                className={item === category ? "active" : ""}
+                className={item === activeCategory ? "active" : ""}
                 onClick={() => setCategory(item)}
               >
                 {item}
@@ -372,9 +382,12 @@ export default function Page() {
             <div className="product-grid">
               {visible.map((product: Product, index) => (
                 <article className="product" key={product.id}>
-                  <div className={`product-visual ${tones[product.category]}`}>
+                  <div
+                    className={`product-visual ${tones[product.category] ?? "tone-clay"}`}
+                  >
                     <span className="visual-index">
-                      0{index + 1} / {product.category.toUpperCase()}
+                      {String(index + 1).padStart(2, "0")} /{" "}
+                      {product.category.toUpperCase()}
                     </span>
                     <span className="product-shape" />
                     <span className="visual-id">

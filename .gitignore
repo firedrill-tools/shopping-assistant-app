@@ -9,3 +9,7 @@ tsconfig.tsbuildinfo
 test-results/
 playwright-report/
 .runs/
+dist/
+__pycache__/
+*.pyc
+.local-state/

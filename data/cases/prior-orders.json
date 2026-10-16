@@ -1,0 +1,95 @@
+{
+  "schema_version": 1,
+  "products": [
+    {
+      "id": "mug-01",
+      "name": "Stoneware mug",
+      "category": "Tabletop",
+      "description": "Matte clay, 350 ml",
+      "price_cents": 2800,
+      "stock": 3,
+      "revision": 2
+    },
+    {
+      "id": "towel-01",
+      "name": "Linen bath towel",
+      "category": "Bath",
+      "description": "Washed linen, natural",
+      "price_cents": 4200,
+      "stock": 0,
+      "revision": 1
+    },
+    {
+      "id": "towel-02",
+      "name": "Cotton bath towel",
+      "category": "Bath",
+      "description": "Organic cotton, ivory",
+      "price_cents": 3600,
+      "stock": 5,
+      "revision": 1
+    },
+    {
+      "id": "lamp-01",
+      "name": "Desk lamp",
+      "category": "Lighting",
+      "description": "Warm LED, graphite",
+      "price_cents": 6800,
+      "stock": 2,
+      "revision": 1
+    },
+    {
+      "id": "lamp-02",
+      "name": "Portable lantern",
+      "category": "Lighting",
+      "description": "Rechargeable, sand",
+      "price_cents": 7400,
+      "stock": 2,
+      "revision": 1
+    },
+    {
+      "id": "bottle-01",
+      "name": "Steel bottle",
+      "category": "Everyday",
+      "description": "Insulated, 500 ml",
+      "price_cents": 3200,
+      "stock": 5,
+      "revision": 2
+    }
+  ],
+  "carts": [
+    {
+      "id": "demo",
+      "budget_cents": 15000,
+      "revision": 9
+    }
+  ],
+  "cart_lines": [
+    {
+      "cart_id": "demo",
+      "product_id": "towel-02",
+      "quantity": 1
+    }
+  ],
+  "orders": [
+    {
+      "id": 7,
+      "cart_id": "demo",
+      "lines_json": "[{\"product_id\":\"mug-01\",\"name\":\"Stoneware mug\",\"quantity\":1,\"price_cents\":2800,\"stock\":4,\"revision\":1}]",
+      "total_cents": 2800,
+      "created_at": "2026-01-08T09:00:00Z",
+      "request_id": null,
+      "expected_cart_token": null
+    },
+    {
+      "id": 19,
+      "cart_id": "demo",
+      "lines_json": "[{\"product_id\":\"bottle-01\",\"name\":\"Steel bottle\",\"quantity\":2,\"price_cents\":3200,\"stock\":7,\"revision\":1}]",
+      "total_cents": 6400,
+      "created_at": "2026-01-09T10:15:00Z",
+      "request_id": null,
+      "expected_cart_token": null
+    }
+  ],
+  "case_id": "prior-orders",
+  "history_origin": "synthetic_human_import"
+}

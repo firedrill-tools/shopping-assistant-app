@@ -2,6 +2,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { closeSync, mkdirSync, openSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
+import starter from "../fixtures/base.json";
 import {
   cartCommandInput,
   cartCommandKey,
@@ -106,64 +107,30 @@ function product(row: Product): Product {
   return row;
 }
 
-const seedProducts: Omit<Product, "revision">[] = [
-  {
-    id: "mug-01",
-    name: "Stoneware mug",
-    category: "Tabletop",
-    description: "Matte clay, 350 ml",
-    price_cents: 2800,
-    stock: 4,
-  },
-  {
-    id: "towel-01",
-    name: "Linen bath towel",
-    category: "Bath",
-    description: "Washed linen, natural",
-    price_cents: 4200,
-    stock: 0,
-  },
-  {
-    id: "towel-02",
-    name: "Cotton bath towel",
-    category: "Bath",
-    description: "Organic cotton, ivory",
-    price_cents: 3600,
-    stock: 5,
-  },
-  {
-    id: "lamp-01",
-    name: "Desk lamp",
-    category: "Lighting",
-    description: "Warm LED, graphite",
-    price_cents: 6800,
-    stock: 2,
-  },
-  {
-    id: "lamp-02",
-    name: "Portable lantern",
-    category: "Lighting",
-    description: "Rechargeable, sand",
-    price_cents: 7400,
-    stock: 2,
-  },
-  {
-    id: "bottle-01",
-    name: "Steel bottle",
-    category: "Everyday",
-    description: "Insulated, 500 ml",
-    price_cents: 3200,
-    stock: 7,
-  },
-];
+const seedProducts = starter.products;
 
 export class ShopStore {
   private db: DatabaseSync;
   private inTransaction = false;
   private closed = false;
   private initialized = false;
+  private readOnly = false;
 
-  constructor(path: string) {
+  constructor(path: string, options: { readOnly?: boolean } = {}) {
+    this.readOnly = options.readOnly ?? false;
+    if (this.readOnly) {
+      this.db = new DatabaseSync(path, { readOnly: true });
+      try {
+        this.db.exec("PRAGMA foreign_keys=ON; PRAGMA busy_timeout=100;");
+        this.transaction(() => validateShop(this.db), "DEFERRED");
+        this.initialized = true;
+      } catch (error) {
+        this.db.close();
+        this.closed = true;
+        throw error;
+      }
+      return;
+    }
     mkdirSync(dirname(path), { recursive: true, mode: 0o700 });
     try {
       closeSync(openSync(path, "wx", 0o600));
@@ -200,6 +167,8 @@ export class ShopStore {
             : version.user_version === 2
               ? [...required, "shop_metadata"]
               : required;
+        if (version.user_version === 3 && existing.includes("dataset_metadata"))
+          expected.push("dataset_metadata");
         if (
           existing.length &&
           existing.sort().join(",") !== expected.sort().join(",")
@@ -244,7 +213,7 @@ export class ShopStore {
         );
         if (!existing.length) {
           const insert = this.db.prepare(
-            "INSERT INTO products VALUES (?,?,?,?,?,?,1)",
+            "INSERT INTO products VALUES (?,?,?,?,?,?,?)",
           );
           for (const row of seedProducts)
             insert.run(
@@ -254,14 +223,15 @@ export class ShopStore {
               row.description,
               row.price_cents,
               row.stock,
+              row.revision,
             );
         }
         if (!existing.length)
           this.db
             .prepare(
-              "INSERT INTO carts(id,budget_cents,revision) VALUES ('demo',15000,1)",
+              "INSERT INTO carts(id,budget_cents,revision) VALUES ('demo',?,?)",
             )
-            .run();
+            .run(starter.carts[0].budget_cents, starter.carts[0].revision);
         if (!existing.length || version.user_version === 0)
           this.db
             .prepare("INSERT INTO shop_metadata VALUES (1,?)")
@@ -298,6 +268,11 @@ export class ShopStore {
     guard?: () => void,
   ): T {
     guard?.();
+    if (this.readOnly && mode !== "DEFERRED")
+      throw new ShopError(
+        "read_only",
+        "This source inspection does not own write access",
+      );
     if (this.inTransaction)
       throw new ShopError(
         "nested_transaction",

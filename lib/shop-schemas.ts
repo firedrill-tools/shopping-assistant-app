@@ -34,7 +34,7 @@ export const lineSchema = z.strictObject({
   stock: integer,
   revision: positive,
 });
-const timestamp = z.string().refine((value) => {
+export const timestamp = z.string().refine((value) => {
   const parsed = Date.parse(value);
   return (
     Number.isFinite(parsed) &&
@@ -43,7 +43,7 @@ const timestamp = z.string().refine((value) => {
   );
 }, "UTC timestamp required");
 const token = z.string().regex(/^[a-f0-9]{64}$/);
-const orderSchema = z.strictObject({
+export const orderSchema = z.strictObject({
   id: positive,
   cart_id: z.literal("demo"),
   lines_json: z.string().min(1).max(1048576),
@@ -52,6 +52,32 @@ const orderSchema = z.strictObject({
   request_id: exactId.nullable(),
   expected_cart_token: token.nullable(),
 });
+export const datasetProvenanceSchema = z
+  .strictObject({
+    dataset_id: z.literal("synthetic-shopping"),
+    version: z.literal(1),
+    case_id: z
+      .string()
+      .min(1)
+      .max(100)
+      .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/),
+    source_sha256: token,
+    manifest_sha256: token,
+    initialized_at: timestamp,
+    history_origin: z.literal("synthetic_human_import"),
+    imported_order_ids: z
+      .array(positive)
+      .max(1000)
+      .refine((ids) => new Set(ids).size === ids.length),
+    original_counts: z.strictObject({
+      products: positive.max(1000),
+      cart_lines: integer.max(1000),
+      orders: integer.max(1000),
+    }),
+  })
+  .refine(
+    (value) => value.original_counts.orders === value.imported_order_ids.length,
+  );
 const commandSchema = z.strictObject({
   request_id: exactId,
   intent_json: z.string().min(1).max(8000),
@@ -148,8 +174,14 @@ export function validateShop(db: DatabaseSync) {
         )
         .all() as { name: string }[]
     ).map((row) => row.name);
+    const expectedColumns = tables.includes("dataset_metadata")
+      ? {
+          ...columns,
+          dataset_metadata: { id: "INTEGER", manifest_json: "TEXT" },
+        }
+      : columns;
     requireState(
-      tables.join(",") === Object.keys(columns).sort().join(","),
+      tables.join(",") === Object.keys(expectedColumns).sort().join(","),
       "Unexpected/missing shop tables",
     );
     requireState(
@@ -160,7 +192,7 @@ export function validateShop(db: DatabaseSync) {
         .get() == null,
       "Shop triggers/views are not qualified",
     );
-    for (const [table, expected] of Object.entries(columns)) {
+    for (const [table, expected] of Object.entries(expectedColumns)) {
       const actual = db.prepare(`PRAGMA table_info(${table})`).all() as {
         name: string;
         type: string;
@@ -367,6 +399,35 @@ export function validateShop(db: DatabaseSync) {
             current.name === previous.name,
           "Current product contradicts its last consecutive order revision",
         );
+    }
+    if (tables.includes("dataset_metadata")) {
+      const rows = db.prepare("SELECT * FROM dataset_metadata").all();
+      requireState(
+        rows.length === 1,
+        "One source-case provenance record required",
+      );
+      const row = parse(
+        z.strictObject({
+          id: z.literal(1),
+          manifest_json: z.string().max(1048576),
+        }),
+        rows[0],
+        "dataset provenance",
+      );
+      const provenance = parse(
+        datasetProvenanceSchema,
+        JSON.parse(row.manifest_json),
+        "dataset provenance body",
+      );
+      for (const id of provenance.imported_order_ids) {
+        const order = orders.find((item) => item.id === id);
+        requireState(
+          order &&
+            order.request_id === null &&
+            order.expected_cart_token === null,
+          "Imported human order provenance is missing or fabricates request identity",
+        );
+      }
     }
     const commands = db
       .prepare("SELECT * FROM cart_commands ORDER BY created_at,request_id")

@@ -1,6 +1,6 @@
 {
   "name": "shopping-assistant-app",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -8,7 +8,10 @@
     "start": "next start",
     "typecheck": "tsc --noEmit",
     "test": "tsx --test test/*.test.ts",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "shop": "tsx scripts/shop.ts",
+    "data:generate": "python3 scripts/generate_data.py",
+    "check:distribution": "python3 scripts/check_distribution.py"
   },
   "dependencies": {
     "@ai-sdk/openai": "4.0.94",

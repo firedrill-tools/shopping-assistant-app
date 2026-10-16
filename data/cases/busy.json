@@ -1,0 +1,655 @@
+{
+  "schema_version": 1,
+  "products": [
+    {
+      "id": "mug-01",
+      "name": "Stoneware mug",
+      "category": "Tabletop",
+      "description": "Matte clay, 350 ml",
+      "price_cents": 2800,
+      "stock": 11,
+      "revision": 2
+    },
+    {
+      "id": "towel-01",
+      "name": "Linen bath towel",
+      "category": "Bath",
+      "description": "Washed linen, natural",
+      "price_cents": 4200,
+      "stock": 0,
+      "revision": 1
+    },
+    {
+      "id": "towel-02",
+      "name": "Cotton bath towel",
+      "category": "Bath",
+      "description": "Organic cotton, ivory",
+      "price_cents": 3600,
+      "stock": 11,
+      "revision": 2
+    },
+    {
+      "id": "lamp-01",
+      "name": "Desk lamp",
+      "category": "Lighting",
+      "description": "Warm LED, graphite",
+      "price_cents": 6800,
+      "stock": 11,
+      "revision": 2
+    },
+    {
+      "id": "lamp-02",
+      "name": "Portable lantern",
+      "category": "Lighting",
+      "description": "Rechargeable, sand",
+      "price_cents": 7400,
+      "stock": 11,
+      "revision": 2
+    },
+    {
+      "id": "bottle-01",
+      "name": "Steel bottle",
+      "category": "Everyday",
+      "description": "Insulated, 500 ml",
+      "price_cents": 3200,
+      "stock": 11,
+      "revision": 2
+    },
+    {
+      "id": "mug-01-v02",
+      "name": "Stoneware mug · collection 02",
+      "category": "Tabletop",
+      "description": "Matte clay, 350 ml",
+      "price_cents": 3050,
+      "stock": 11,
+      "revision": 2
+    },
+    {
+      "id": "towel-01-v02",
+      "name": "Linen bath towel · collection 02",
+      "category": "Bath",
+      "description": "Washed linen, natural",
+      "price_cents": 4450,
+      "stock": 0,
+      "revision": 1
+    },
+    {
+      "id": "towel-02-v02",
+      "name": "Cotton bath towel · collection 02",
+      "category": "Bath",
+      "description": "Organic cotton, ivory",
+      "price_cents": 3850,
+      "stock": 11,
+      "revision": 2
+    },
+    {
+      "id": "lamp-01-v02",
+      "name": "Desk lamp · collection 02",
+      "category": "Lighting",
+      "description": "Warm LED, graphite",
+      "price_cents": 7050,
+      "stock": 11,
+      "revision": 2
+    },
+    {
+      "id": "lamp-02-v02",
+      "name": "Portable lantern · collection 02",
+      "category": "Lighting",
+      "description": "Rechargeable, sand",
+      "price_cents": 7650,
+      "stock": 11,
+      "revision": 2
+    },
+    {
+      "id": "bottle-01-v02",
+      "name": "Steel bottle · collection 02",
+      "category": "Everyday",
+      "description": "Insulated, 500 ml",
+      "price_cents": 3450,
+      "stock": 11,
+      "revision": 2
+    },
+    {
+      "id": "mug-01-v03",
+      "name": "Stoneware mug · collection 03",
+      "category": "Tabletop",
+      "description": "Matte clay, 350 ml",
+      "price_cents": 3300,
+      "stock": 11,
+      "revision": 2
+    },
+    {
+      "id": "towel-01-v03",
+      "name": "Linen bath towel · collection 03",
+      "category": "Bath",
+      "description": "Washed linen, natural",
+      "price_cents": 4700,
+      "stock": 0,
+      "revision": 1
+    },
+    {
+      "id": "towel-02-v03",
+      "name": "Cotton bath towel · collection 03",
+      "category": "Bath",
+      "description": "Organic cotton, ivory",
+      "price_cents": 4100,
+      "stock": 11,
+      "revision": 2
+    },
+    {
+      "id": "lamp-01-v03",
+      "name": "Desk lamp · collection 03",
+      "category": "Lighting",
+      "description": "Warm LED, graphite",
+      "price_cents": 7300,
+      "stock": 11,
+      "revision": 2
+    },
+    {
+      "id": "lamp-02-v03",
+      "name": "Portable lantern · collection 03",
+      "category": "Lighting",
+      "description": "Rechargeable, sand",
+      "price_cents": 7900,
+      "stock": 11,
+      "revision": 2
+    },
+    {
+      "id": "bottle-01-v03",
+      "name": "Steel bottle · collection 03",
+      "category": "Everyday",
+      "description": "Insulated, 500 ml",
+      "price_cents": 3700,
+      "stock": 11,
+      "revision": 2
+    },
+    {
+      "id": "mug-01-v04",
+      "name": "Stoneware mug · collection 04",
+      "category": "Tabletop",
+      "description": "Matte clay, 350 ml",
+      "price_cents": 3550,
+      "stock": 11,
+      "revision": 2
+    },
+    {
+      "id": "towel-01-v04",
+      "name": "Linen bath towel · collection 04",
+      "category": "Bath",
+      "description": "Washed linen, natural",
+      "price_cents": 4950,
+      "stock": 0,
+      "revision": 1
+    },
+    {
+      "id": "towel-02-v04",
+      "name": "Cotton bath towel · collection 04",
+      "category": "Bath",
+      "description": "Organic cotton, ivory",
+      "price_cents": 4350,
+      "stock": 11,
+      "revision": 2
+    },
+    {
+      "id": "lamp-01-v04",
+      "name": "Desk lamp · collection 04",
+      "category": "Lighting",
+      "description": "Warm LED, graphite",
+      "price_cents": 7550,
+      "stock": 11,
+      "revision": 2
+    },
+    {
+      "id": "lamp-02-v04",
+      "name": "Portable lantern · collection 04",
+      "category": "Lighting",
+      "description": "Rechargeable, sand",
+      "price_cents": 8150,
+      "stock": 11,
+      "revision": 2
+    },
+    {
+      "id": "bottle-01-v04",
+      "name": "Steel bottle · collection 04",
+      "category": "Everyday",
+      "description": "Insulated, 500 ml",
+      "price_cents": 3950,
+      "stock": 11,
+      "revision": 2
+    },
+    {
+      "id": "mug-01-v05",
+      "name": "Stoneware mug · collection 05",
+      "category": "Tabletop",
+      "description": "Matte clay, 350 ml",
+      "price_cents": 3800,
+      "stock": 12,
+      "revision": 1
+    },
+    {
+      "id": "towel-01-v05",
+      "name": "Linen bath towel · collection 05",
+      "category": "Bath",
+      "description": "Washed linen, natural",
+      "price_cents": 5200,
+      "stock": 0,
+      "revision": 1
+    },
+    {
+      "id": "towel-02-v05",
+      "name": "Cotton bath towel · collection 05",
+      "category": "Bath",
+      "description": "Organic cotton, ivory",
+      "price_cents": 4600,
+      "stock": 12,
+      "revision": 1
+    },
+    {
+      "id": "lamp-01-v05",
+      "name": "Desk lamp · collection 05",
+      "category": "Lighting",
+      "description": "Warm LED, graphite",
+      "price_cents": 7800,
+      "stock": 12,
+      "revision": 1
+    },
+    {
+      "id": "lamp-02-v05",
+      "name": "Portable lantern · collection 05",
+      "category": "Lighting",
+      "description": "Rechargeable, sand",
+      "price_cents": 8400,
+      "stock": 12,
+      "revision": 1
+    },
+    {
+      "id": "bottle-01-v05",
+      "name": "Steel bottle · collection 05",
+      "category": "Everyday",
+      "description": "Insulated, 500 ml",
+      "price_cents": 4200,
+      "stock": 12,
+      "revision": 1
+    },
+    {
+      "id": "mug-01-v06",
+      "name": "Stoneware mug · collection 06",
+      "category": "Tabletop",
+      "description": "Matte clay, 350 ml",
+      "price_cents": 4050,
+      "stock": 12,
+      "revision": 1
+    },
+    {
+      "id": "towel-01-v06",
+      "name": "Linen bath towel · collection 06",
+      "category": "Bath",
+      "description": "Washed linen, natural",
+      "price_cents": 5450,
+      "stock": 0,
+      "revision": 1
+    },
+    {
+      "id": "towel-02-v06",
+      "name": "Cotton bath towel · collection 06",
+      "category": "Bath",
+      "description": "Organic cotton, ivory",
+      "price_cents": 4850,
+      "stock": 12,
+      "revision": 1
+    },
+    {
+      "id": "lamp-01-v06",
+      "name": "Desk lamp · collection 06",
+      "category": "Lighting",
+      "description": "Warm LED, graphite",
+      "price_cents": 8050,
+      "stock": 12,
+      "revision": 1
+    },
+    {
+      "id": "lamp-02-v06",
+      "name": "Portable lantern · collection 06",
+      "category": "Lighting",
+      "description": "Rechargeable, sand",
+      "price_cents": 8650,
+      "stock": 12,
+      "revision": 1
+    },
+    {
+      "id": "bottle-01-v06",
+      "name": "Steel bottle · collection 06",
+      "category": "Everyday",
+      "description": "Insulated, 500 ml",
+      "price_cents": 4450,
+      "stock": 12,
+      "revision": 1
+    },
+    {
+      "id": "mug-01-v07",
+      "name": "Stoneware mug · collection 07",
+      "category": "Tabletop",
+      "description": "Matte clay, 350 ml",
+      "price_cents": 4300,
+      "stock": 12,
+      "revision": 1
+    },
+    {
+      "id": "towel-01-v07",
+      "name": "Linen bath towel · collection 07",
+      "category": "Bath",
+      "description": "Washed linen, natural",
+      "price_cents": 5700,
+      "stock": 0,
+      "revision": 1
+    },
+    {
+      "id": "towel-02-v07",
+      "name": "Cotton bath towel · collection 07",
+      "category": "Bath",
+      "description": "Organic cotton, ivory",
+      "price_cents": 5100,
+      "stock": 12,
+      "revision": 1
+    },
+    {
+      "id": "lamp-01-v07",
+      "name": "Desk lamp · collection 07",
+      "category": "Lighting",
+      "description": "Warm LED, graphite",
+      "price_cents": 8300,
+      "stock": 12,
+      "revision": 1
+    },
+    {
+      "id": "lamp-02-v07",
+      "name": "Portable lantern · collection 07",
+      "category": "Lighting",
+      "description": "Rechargeable, sand",
+      "price_cents": 8900,
+      "stock": 12,
+      "revision": 1
+    },
+    {
+      "id": "bottle-01-v07",
+      "name": "Steel bottle · collection 07",
+      "category": "Everyday",
+      "description": "Insulated, 500 ml",
+      "price_cents": 4700,
+      "stock": 12,
+      "revision": 1
+    },
+    {
+      "id": "mug-01-v08",
+      "name": "Stoneware mug · collection 08",
+      "category": "Tabletop",
+      "description": "Matte clay, 350 ml",
+      "price_cents": 4550,
+      "stock": 12,
+      "revision": 1
+    },
+    {
+      "id": "towel-01-v08",
+      "name": "Linen bath towel · collection 08",
+      "category": "Bath",
+      "description": "Washed linen, natural",
+      "price_cents": 5950,
+      "stock": 0,
+      "revision": 1
+    },
+    {
+      "id": "towel-02-v08",
+      "name": "Cotton bath towel · collection 08",
+      "category": "Bath",
+      "description": "Organic cotton, ivory",
+      "price_cents": 5350,
+      "stock": 12,
+      "revision": 1
+    },
+    {
+      "id": "lamp-01-v08",
+      "name": "Desk lamp · collection 08",
+      "category": "Lighting",
+      "description": "Warm LED, graphite",
+      "price_cents": 8550,
+      "stock": 12,
+      "revision": 1
+    },
+    {
+      "id": "lamp-02-v08",
+      "name": "Portable lantern · collection 08",
+      "category": "Lighting",
+      "description": "Rechargeable, sand",
+      "price_cents": 9150,
+      "stock": 12,
+      "revision": 1
+    },
+    {
+      "id": "bottle-01-v08",
+      "name": "Steel bottle · collection 08",
+      "category": "Everyday",
+      "description": "Insulated, 500 ml",
+      "price_cents": 4950,
+      "stock": 12,
+      "revision": 1
+    }
+  ],
+  "carts": [
+    {
+      "id": "demo",
+      "budget_cents": 40000,
+      "revision": 33
+    }
+  ],
+  "cart_lines": [
+    {
+      "cart_id": "demo",
+      "product_id": "mug-01",
+      "quantity": 1
+    },
+    {
+      "cart_id": "demo",
+      "product_id": "towel-02",
+      "quantity": 2
+    },
+    {
+      "cart_id": "demo",
+      "product_id": "lamp-01",
+      "quantity": 1
+    },
+    {
+      "cart_id": "demo",
+      "product_id": "lamp-02",
+      "quantity": 1
+    },
+    {
+      "cart_id": "demo",
+      "product_id": "bottle-01",
+      "quantity": 2
+    }
+  ],
+  "orders": [
+    {
+      "id": 101,
+      "cart_id": "demo",
+      "lines_json": "[{\"product_id\":\"mug-01\",\"name\":\"Stoneware mug\",\"quantity\":1,\"price_cents\":2800,\"stock\":12,\"revision\":1}]",
+      "total_cents": 2800,
+      "created_at": "2026-01-12T08:00:00Z",
+      "request_id": null,
+      "expected_cart_token": null
+    },
+    {
+      "id": 104,
+      "cart_id": "demo",
+      "lines_json": "[{\"product_id\":\"towel-02\",\"name\":\"Cotton bath towel\",\"quantity\":1,\"price_cents\":3600,\"stock\":12,\"revision\":1}]",
+      "total_cents": 3600,
+      "created_at": "2026-01-12T08:10:00Z",
+      "request_id": null,
+      "expected_cart_token": null
+    },
+    {
+      "id": 107,
+      "cart_id": "demo",
+      "lines_json": "[{\"product_id\":\"lamp-01\",\"name\":\"Desk lamp\",\"quantity\":1,\"price_cents\":6800,\"stock\":12,\"revision\":1}]",
+      "total_cents": 6800,
+      "created_at": "2026-01-12T08:20:00Z",
+      "request_id": null,
+      "expected_cart_token": null
+    },
+    {
+      "id": 110,
+      "cart_id": "demo",
+      "lines_json": "[{\"product_id\":\"lamp-02\",\"name\":\"Portable lantern\",\"quantity\":1,\"price_cents\":7400,\"stock\":12,\"revision\":1}]",
+      "total_cents": 7400,
+      "created_at": "2026-01-12T08:30:00Z",
+      "request_id": null,
+      "expected_cart_token": null
+    },
+    {
+      "id": 113,
+      "cart_id": "demo",
+      "lines_json": "[{\"product_id\":\"bottle-01\",\"name\":\"Steel bottle\",\"quantity\":1,\"price_cents\":3200,\"stock\":12,\"revision\":1}]",
+      "total_cents": 3200,
+      "created_at": "2026-01-12T08:40:00Z",
+      "request_id": null,
+      "expected_cart_token": null
+    },
+    {
+      "id": 116,
+      "cart_id": "demo",
+      "lines_json": "[{\"product_id\":\"mug-01-v02\",\"name\":\"Stoneware mug · collection 02\",\"quantity\":1,\"price_cents\":3050,\"stock\":12,\"revision\":1}]",
+      "total_cents": 3050,
+      "created_at": "2026-01-12T08:50:00Z",
+      "request_id": null,
+      "expected_cart_token": null
+    },
+    {
+      "id": 119,
+      "cart_id": "demo",
+      "lines_json": "[{\"product_id\":\"towel-02-v02\",\"name\":\"Cotton bath towel · collection 02\",\"quantity\":1,\"price_cents\":3850,\"stock\":12,\"revision\":1}]",
+      "total_cents": 3850,
+      "created_at": "2026-01-12T09:00:00Z",
+      "request_id": null,
+      "expected_cart_token": null
+    },
+    {
+      "id": 122,
+      "cart_id": "demo",
+      "lines_json": "[{\"product_id\":\"lamp-01-v02\",\"name\":\"Desk lamp · collection 02\",\"quantity\":1,\"price_cents\":7050,\"stock\":12,\"revision\":1}]",
+      "total_cents": 7050,
+      "created_at": "2026-01-12T09:10:00Z",
+      "request_id": null,
+      "expected_cart_token": null
+    },
+    {
+      "id": 125,
+      "cart_id": "demo",
+      "lines_json": "[{\"product_id\":\"lamp-02-v02\",\"name\":\"Portable lantern · collection 02\",\"quantity\":1,\"price_cents\":7650,\"stock\":12,\"revision\":1}]",
+      "total_cents": 7650,
+      "created_at": "2026-01-12T09:20:00Z",
+      "request_id": null,
+      "expected_cart_token": null
+    },
+    {
+      "id": 128,
+      "cart_id": "demo",
+      "lines_json": "[{\"product_id\":\"bottle-01-v02\",\"name\":\"Steel bottle · collection 02\",\"quantity\":1,\"price_cents\":3450,\"stock\":12,\"revision\":1}]",
+      "total_cents": 3450,
+      "created_at": "2026-01-12T09:30:00Z",
+      "request_id": null,
+      "expected_cart_token": null
+    },
+    {
+      "id": 131,
+      "cart_id": "demo",
+      "lines_json": "[{\"product_id\":\"mug-01-v03\",\"name\":\"Stoneware mug · collection 03\",\"quantity\":1,\"price_cents\":3300,\"stock\":12,\"revision\":1}]",
+      "total_cents": 3300,
+      "created_at": "2026-01-12T09:40:00Z",
+      "request_id": null,
+      "expected_cart_token": null
+    },
+    {
+      "id": 134,
+      "cart_id": "demo",
+      "lines_json": "[{\"product_id\":\"towel-02-v03\",\"name\":\"Cotton bath towel · collection 03\",\"quantity\":1,\"price_cents\":4100,\"stock\":12,\"revision\":1}]",
+      "total_cents": 4100,
+      "created_at": "2026-01-12T09:50:00Z",
+      "request_id": null,
+      "expected_cart_token": null
+    },
+    {
+      "id": 137,
+      "cart_id": "demo",
+      "lines_json": "[{\"product_id\":\"lamp-01-v03\",\"name\":\"Desk lamp · collection 03\",\"quantity\":1,\"price_cents\":7300,\"stock\":12,\"revision\":1}]",
+      "total_cents": 7300,
+      "created_at": "2026-01-12T10:00:00Z",
+      "request_id": null,
+      "expected_cart_token": null
+    },
+    {
+      "id": 140,
+      "cart_id": "demo",
+      "lines_json": "[{\"product_id\":\"lamp-02-v03\",\"name\":\"Portable lantern · collection 03\",\"quantity\":1,\"price_cents\":7900,\"stock\":12,\"revision\":1}]",
+      "total_cents": 7900,
+      "created_at": "2026-01-12T10:10:00Z",
+      "request_id": null,
+      "expected_cart_token": null
+    },
+    {
+      "id": 143,
+      "cart_id": "demo",
+      "lines_json": "[{\"product_id\":\"bottle-01-v03\",\"name\":\"Steel bottle · collection 03\",\"quantity\":1,\"price_cents\":3700,\"stock\":12,\"revision\":1}]",
+      "total_cents": 3700,
+      "created_at": "2026-01-12T10:20:00Z",
+      "request_id": null,
+      "expected_cart_token": null
+    },
+    {
+      "id": 146,
+      "cart_id": "demo",
+      "lines_json": "[{\"product_id\":\"mug-01-v04\",\"name\":\"Stoneware mug · collection 04\",\"quantity\":1,\"price_cents\":3550,\"stock\":12,\"revision\":1}]",
+      "total_cents": 3550,
+      "created_at": "2026-01-12T10:30:00Z",
+      "request_id": null,
+      "expected_cart_token": null
+    },
+    {
+      "id": 149,
+      "cart_id": "demo",
+      "lines_json": "[{\"product_id\":\"towel-02-v04\",\"name\":\"Cotton bath towel · collection 04\",\"quantity\":1,\"price_cents\":4350,\"stock\":12,\"revision\":1}]",
+      "total_cents": 4350,
+      "created_at": "2026-01-12T10:40:00Z",
+      "request_id": null,
+      "expected_cart_token": null
+    },
+    {
+      "id": 152,
+      "cart_id": "demo",
+      "lines_json": "[{\"product_id\":\"lamp-01-v04\",\"name\":\"Desk lamp · collection 04\",\"quantity\":1,\"price_cents\":7550,\"stock\":12,\"revision\":1}]",
+      "total_cents": 7550,
+      "created_at": "2026-01-12T10:50:00Z",
+      "request_id": null,
+      "expected_cart_token": null
+    },
+    {
+      "id": 155,
+      "cart_id": "demo",
+      "lines_json": "[{\"product_id\":\"lamp-02-v04\",\"name\":\"Portable lantern · collection 04\",\"quantity\":1,\"price_cents\":8150,\"stock\":12,\"revision\":1}]",
+      "total_cents": 8150,
+      "created_at": "2026-01-12T11:00:00Z",
+      "request_id": null,
+      "expected_cart_token": null
+    },
+    {
+      "id": 158,
+      "cart_id": "demo",
+      "lines_json": "[{\"product_id\":\"bottle-01-v04\",\"name\":\"Steel bottle · collection 04\",\"quantity\":1,\"price_cents\":3950,\"stock\":12,\"revision\":1}]",
+      "total_cents": 3950,
+      "created_at": "2026-01-12T11:10:00Z",
+      "request_id": null,
+      "expected_cart_token": null
+    }
+  ],
+  "case_id": "busy",
+  "history_origin": "synthetic_human_import"
+}

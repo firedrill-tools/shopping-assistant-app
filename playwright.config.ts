@@ -2,7 +2,8 @@ import { defineConfig } from "@playwright/test";
 import { resolve } from "node:path";
 
 export default defineConfig({
-  testDir: "./e2e",
+  testDir: ".",
+  testMatch: ["e2e/**/*.spec.ts", "e2e-busy/**/*.spec.ts"],
   fullyParallel: false,
   workers: 1,
   retries: 0,
@@ -33,6 +34,22 @@ export default defineConfig({
         OPENAI_MODEL: "gpt-synthetic",
         OPENAI_BASE_URL: "http://127.0.0.1:3303/v1",
         SHOP_CHAT_OUTPUT_ROOT: resolve(".e2e/runs"),
+        NEXT_TELEMETRY_DISABLED: "1",
+      },
+      gracefulShutdown: { signal: "SIGTERM", timeout: 3000 },
+    },
+    {
+      command:
+        "tsx scripts/browser-state.ts busy && npm run start -- --hostname 127.0.0.1 --port 3304",
+      url: "http://127.0.0.1:3304",
+      reuseExistingServer: false,
+      timeout: 60000,
+      env: {
+        SHOP_DB: resolve(".e2e/busy.db"),
+        OPENAI_API_KEY: "synthetic-not-a-provider-key",
+        OPENAI_MODEL: "gpt-synthetic",
+        OPENAI_BASE_URL: "http://127.0.0.1:3303/v1",
+        SHOP_CHAT_OUTPUT_ROOT: resolve(".e2e/busy-runs"),
         NEXT_TELEMETRY_DISABLED: "1",
       },
       gracefulShutdown: { signal: "SIGTERM", timeout: 3000 },

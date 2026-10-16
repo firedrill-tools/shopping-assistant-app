@@ -18,3 +18,10 @@ jobs:
 
       - run: npx playwright install --with-deps chromium
       - run: npm run test:e2e
+
+      - run: python3 scripts/check_distribution.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: shopping-assistant-source
+          path: dist/*-source.tar.gz
+          retention-days: 7

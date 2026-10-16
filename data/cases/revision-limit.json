@@ -1,0 +1,76 @@
+{
+  "schema_version": 1,
+  "products": [
+    {
+      "id": "mug-01",
+      "name": "Stoneware mug",
+      "category": "Tabletop",
+      "description": "Matte clay, 350 ml",
+      "price_cents": 2800,
+      "stock": 4,
+      "revision": 9007199254740991
+    },
+    {
+      "id": "towel-01",
+      "name": "Linen bath towel",
+      "category": "Bath",
+      "description": "Washed linen, natural",
+      "price_cents": 4200,
+      "stock": 0,
+      "revision": 1
+    },
+    {
+      "id": "towel-02",
+      "name": "Cotton bath towel",
+      "category": "Bath",
+      "description": "Organic cotton, ivory",
+      "price_cents": 3600,
+      "stock": 5,
+      "revision": 1
+    },
+    {
+      "id": "lamp-01",
+      "name": "Desk lamp",
+      "category": "Lighting",
+      "description": "Warm LED, graphite",
+      "price_cents": 6800,
+      "stock": 2,
+      "revision": 1
+    },
+    {
+      "id": "lamp-02",
+      "name": "Portable lantern",
+      "category": "Lighting",
+      "description": "Rechargeable, sand",
+      "price_cents": 7400,
+      "stock": 2,
+      "revision": 1
+    },
+    {
+      "id": "bottle-01",
+      "name": "Steel bottle",
+      "category": "Everyday",
+      "description": "Insulated, 500 ml",
+      "price_cents": 3200,
+      "stock": 7,
+      "revision": 1
+    }
+  ],
+  "carts": [
+    {
+      "id": "demo",
+      "budget_cents": 15000,
+      "revision": 2
+    }
+  ],
+  "cart_lines": [
+    {
+      "cart_id": "demo",
+      "product_id": "mug-01",
+      "quantity": 1
+    }
+  ],
+  "orders": [],
+  "case_id": "revision-limit",
+  "history_origin": "synthetic_human_import"
+}

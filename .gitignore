@@ -5,3 +5,6 @@ data/*.db-*
 *.report.json
 .env
 tsconfig.tsbuildinfo
+.e2e/
+test-results/
+playwright-report/

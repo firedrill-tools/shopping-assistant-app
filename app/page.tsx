@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { Product, ShopState } from "@/lib/store";
 
 type Message = { role: "user" | "assistant"; content: string };
@@ -17,6 +17,8 @@ export default function Page() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [draft, setDraft] = useState("");
   const [chatBusy, setChatBusy] = useState(false);
+  const [checkoutRecovery, setCheckoutRecovery] = useState(false);
+  const checkoutIntent = useRef<{ request_id: string; expected_cart_token: string } | null>(null);
 
   const refresh = useCallback(async () => {
     try {
@@ -40,14 +42,42 @@ export default function Page() {
     finally { setBusy(false); }
   }
 
+  function clearCheckoutIntent() {
+    checkoutIntent.current = null;
+    setCheckoutRecovery(false);
+    try { sessionStorage.removeItem("nook.checkoutIntent"); } catch { /* A valid acknowledgement still resolves this request. */ }
+  }
+
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem("nook.checkoutIntent");
+      if (raw) {
+        const saved = JSON.parse(raw);
+        if (saved && Object.keys(saved).sort().join(",") === "expected_cart_token,request_id" && typeof saved.request_id === "string" && saved.request_id.trim() === saved.request_id && saved.request_id.length > 0 && saved.request_id.length <= 100 && typeof saved.expected_cart_token === "string" && /^[a-f0-9]{64}$/.test(saved.expected_cart_token)) {
+          checkoutIntent.current = saved; setCheckoutRecovery(true);
+        } else sessionStorage.removeItem("nook.checkoutIntent");
+      }
+    } catch { /* Persisting a new request is checked before dispatch. */ }
+  }, []);
+
   async function checkout() {
+    if (!state) return;
+    const intent = checkoutIntent.current ?? { request_id: crypto.randomUUID(), expected_cart_token: state.checkout_token };
+    try { sessionStorage.setItem("nook.checkoutIntent", JSON.stringify(intent)); }
+    catch { setError("This browser cannot retain the checkout for recovery. Enable session storage before placing the order."); return; }
+    checkoutIntent.current = intent;
     setBusy(true); setError(""); setNotice("");
     try {
-      const response = await fetch("/api/checkout", { method: "POST" });
+      const response = await fetch("/api/checkout", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(intent) });
       const result = await response.json();
-      if (!response.ok) throw new Error(result.message || "Checkout failed");
-      setState(result.state); setNotice(`Order ${result.order_id} placed for ${money(result.total_cents)}.`);
-    } catch (cause) { setError(cause instanceof Error ? cause.message : "Checkout failed"); await refresh(); }
+      if (!response.ok) {
+        if (["stale_cart", "empty_cart", "over_budget", "out_of_stock", "revision_limit", "invalid_request", "invalid_value"].includes(result.error)) clearCheckoutIntent();
+        throw new Error(result.message || "Checkout failed");
+      }
+      if (result.request_id !== intent.request_id || result.expected_cart_token !== intent.expected_cart_token) throw new Error("Checkout acknowledgement changed; inspect the original request before retrying.");
+      clearCheckoutIntent();
+      setState(result.state); setNotice(result.replayed ? `Order ${result.order_id} was already placed for ${money(result.total_cents)}.` : `Order ${result.order_id} placed for ${money(result.total_cents)}.`);
+    } catch (cause) { setCheckoutRecovery(checkoutIntent.current !== null); setError(cause instanceof Error ? cause.message : "Checkout failed"); await refresh(); }
     finally { setBusy(false); }
   }
 
@@ -93,7 +123,7 @@ export default function Page() {
           <div><span>REMAINING</span><strong>{state ? money(state.remaining_cents) : "—"}</strong></div></div>
         <div className="bag-lines">{!state?.cart.length ? <p className="empty-bag">Your bag is empty. Add a piece from the collection to begin.</p> : state.cart.map((line) => <div className="bag-line" key={line.product_id}><div><strong>{line.name}</strong><small>Qty {line.quantity} · {money(line.price_cents)} each</small></div><button onClick={() => void cartCommand({ action: "remove", product_id: line.product_id })} disabled={busy}>Remove</button></div>)}</div>
         <div className="bag-footer"><div><span>Subtotal</span><strong>{state ? money(state.total_cents) : "—"}</strong></div>
-          <button className="checkout" disabled={!state?.cart.length || busy} onClick={() => void checkout()}>Place synthetic order <span>↗</span></button>
+          <button className="checkout" disabled={(!state?.cart.length && !checkoutRecovery) || busy} onClick={() => void checkout()}>{checkoutRecovery ? "Check previous checkout" : "Place synthetic order"} <span>↗</span></button>
           <p>Stock and budget are checked again at checkout.</p></div>
         {error && <div className="error" role="alert">{error}</div>}{notice && <div className="notice" role="status">{notice}</div>}</section>
         <section className="assistant" id="assistant"><div className="assistant-head"><span className="assistant-icon">✦</span><div><div className="eyebrow">SHOPPING COMPANION</div><h2>Ask Nook.</h2></div></div>

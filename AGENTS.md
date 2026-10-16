@@ -11,3 +11,6 @@ This version has breaking changes — APIs, conventions, and file structure may 
 This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
 
 <!-- END:nextjs-agent-rules -->
+
+
+Checkout now requires a stable request ID and the exact reviewed shop/cart token. Bind instance/cart revision/budget and current line prices/stock/revisions under the transaction; a changed view cannot be purchased silently. Exact request replay returns its original immutable order without touching a newer cart; changed payload under the same ID fails. Preserve legacy orders and unknown request provenance during migration. New DB/WAL state is private, reads use one transaction and totals use safe integer/BigInt arithmetic. Precommit cancellation rolls back all order/cart/stock changes. Keep unresolved browser requests across reload and distinguish recovery from a new order. Model tools must never receive shopper write capabilities. Full cart/native/data/distribution follow-up remains in PLAN.md; domain/browser checks do not prove live advice or provider usage.

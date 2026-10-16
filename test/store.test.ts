@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { randomUUID } from "node:crypto";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -8,8 +9,18 @@ import { ShopError, ShopStore } from "../lib/store";
 function fixture(t: { after: (callback: () => void) => void }) {
   const dir = mkdtempSync(join(tmpdir(), "firedrill-shop-"));
   const store = new ShopStore(join(dir, "shop.db"));
-  t.after(() => { store.close(); rmSync(dir, { recursive: true, force: true }); });
+  t.after(() => {
+    store.close();
+    rmSync(dir, { recursive: true, force: true });
+  });
   return store;
+}
+
+function checkout(store: ShopStore) {
+  return store.checkout({
+    request_id: randomUUID(),
+    expected_cart_token: store.state().checkout_token,
+  });
 }
 
 function rejects(code: string) {
@@ -20,8 +31,14 @@ test("unavailable product suggests a current in-stock substitute", (t) => {
   const store = fixture(t);
   const linen = store.product("towel-01")!;
   assert.equal(linen.stock, 0);
-  assert.deepEqual(store.alternatives(linen.id).map((item) => item.id), ["towel-02"]);
-  assert.throws(() => store.add(linen.id, 1, linen.revision), rejects("out_of_stock"));
+  assert.deepEqual(
+    store.alternatives(linen.id).map((item) => item.id),
+    ["towel-02"],
+  );
+  assert.throws(
+    () => store.add(linen.id, 1, linen.revision),
+    rejects("out_of_stock"),
+  );
   assert.equal(store.state().cart.length, 0);
 });
 
@@ -40,15 +57,15 @@ test("revision and stock are rechecked before checkout", (t) => {
   store.add("lamp-01", 2, 1);
   store.setStockForScenario("lamp-01", 1);
   assert.throws(() => store.add("lamp-01", 1, 1), rejects("stale_product"));
-  assert.throws(() => store.checkout(), rejects("out_of_stock"));
+  assert.throws(() => checkout(store), rejects("out_of_stock"));
   assert.equal(store.state().cart[0].quantity, 2);
   store.setStockForScenario("lamp-01", 2);
-  const order = store.checkout();
+  const order = checkout(store);
   assert.equal(order.total_cents, 13600);
   assert.equal(order.lines[0].quantity, 2);
   assert.equal(store.product("lamp-01")!.stock, 0);
   assert.equal(store.state().cart.length, 0);
-  assert.throws(() => store.checkout(), rejects("empty_cart"));
+  assert.throws(() => checkout(store), rejects("empty_cart"));
 });
 
 test("cart state persists across store instances and removal is explicit", (t) => {

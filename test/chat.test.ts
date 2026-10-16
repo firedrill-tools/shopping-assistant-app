@@ -3,6 +3,7 @@ import { mkdtempSync, readFileSync, rmSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
+import { DatabaseSync } from "node:sqlite";
 import { chatHandler, runChat, type ChatOptions } from "../lib/chat";
 import { publish } from "../lib/chat-evidence";
 import { ShopStore } from "../lib/store";
@@ -580,3 +581,31 @@ test(
     assert.equal(cancelled, true);
   },
 );
+
+test("final source validation failure persists a failed receipt instead of releasing native prose", async (t) => {
+  const context = fixture(t),
+    transport = script([body()]);
+  const fetch: typeof globalThis.fetch = async (url, options) => {
+    const response = await transport.fetch(url, options);
+    const db = new DatabaseSync(join(context.root, "shop.db"));
+    db.exec("UPDATE products SET stock=1.5 WHERE id='mug-01'");
+    db.close();
+    return response;
+  };
+  await assert.rejects(
+    runChat(context.store, input, { ...context.options, fetch }),
+    (error: Failure) => {
+      const persisted = JSON.parse(readFileSync(error.receiptPath, "utf8"));
+      assert.equal(persisted.status, "failed");
+      assert.equal(persisted.result, null);
+      assert.ok(persisted.snapshot_error);
+      assert.equal(persisted.provider_observations.length, 1);
+      assert.equal(persisted.provider_observations[0].status, "accepted");
+      assert.deepEqual(persisted.actual_effects, {
+        cart_mutations: [],
+        placed_order_ids: [],
+      });
+      return true;
+    },
+  );
+});

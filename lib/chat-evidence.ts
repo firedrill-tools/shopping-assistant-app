@@ -128,31 +128,34 @@ export class ChatReceipt {
     await this.tail;
   }
   async finish(result: unknown, error: unknown) {
+    let failure = error;
     Object.assign(this.data, {
-      status: error ? "failed" : "completed",
+      status: failure ? "failed" : "completed",
       finished_at: now(),
-      result: error ? null : result,
-      error: error ? errorInfo(error) : null,
+      result: failure ? null : result,
+      error: failure ? errorInfo(failure) : null,
     });
     try {
       const final = this.store.snapshot();
       this.data.final_state = final;
       this.data.final_state_sha256 = hash(JSON.stringify(final));
-    } catch (failure) {
-      this.data.snapshot_error = errorInfo(failure);
-      if (!error) {
-        this.data.status = "failed";
-        this.data.result = null;
-        throw failure;
-      }
+    } catch (snapshotFailure) {
+      this.data.snapshot_error = errorInfo(snapshotFailure);
+      failure ??= snapshotFailure;
+      Object.assign(this.data, {
+        status: "failed",
+        result: null,
+        error: errorInfo(failure),
+      });
     }
     try {
       await this.save(true);
-    } catch (failure) {
+    } catch (recordingFailure) {
       this.data.status = "failed";
       this.data.result = null;
-      this.data.evidence_error = errorInfo(failure);
-      throw failure;
+      this.data.evidence_error = errorInfo(recordingFailure);
+      throw recordingFailure;
     }
+    if (failure && !error) throw failure;
   }
 }

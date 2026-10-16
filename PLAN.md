@@ -15,9 +15,8 @@ The initial native checkpoint at 7c6b58f passed all 46 checks and five Chromium 
 
 ## Independent tasks remaining
 
-1. Qualify strict complete product/cart/order schemas and safe coherent imported history. Preserve shopper-only add/checkout authority and exact original-order recovery; model tools remain read-only.
-2. Add deterministic hash-bound starter/busy/ambiguous/boundary catalog/cart/order cases, exclusive private initialization/reset, honest human order history and selected task focus excluded from prompts. No fake provider trials or reference-answer matching for advice.
-3. Qualify all cases and concrete remaining UI recovery risks. Verify a fresh locked complete source archive outside checkout, all installed cases and actual cart/order operations; update exact-head CI/catalog. Continue #22/#27/#31/#36/#40 and Wave 3 afterward.
+1. Add deterministic hash-bound starter/busy/ambiguous/boundary catalog/cart/order cases, exclusive private initialization/reset, honest human-import order history and selected task focus excluded from prompts. No fake provider trials or reference-answer matching for advice.
+2. Qualify all installed cases and actual native busy/quoted-source/conflict paths. Verify a fresh locked complete source archive outside checkout and actual key-free CLI/cart/order operations; update exact-head CI/catalog. Continue #22/#27/#31/#36/#40 and Wave 3 afterward.
 
 ## Parked external gates
 
@@ -39,3 +38,10 @@ Actual ai 7.0.141 / @ai-sdk/openai 4.0.94 through createOpenAI.responses with it
 The prior direct add path repeated a quantity (one mug became two) on retry. Replaying remove after a later same-product add deleted the new entry. Stable exact request identity and complete reviewed shop token now bind each shopper command; original effect and cart changes commit together. Recovery returns immutable before/after facts plus current state without reapplying. Changed intent fails, current source changes need review, and precommit cancellation rolls back command/cart/revision. Two competing processes prove one original add and checkout each apply once. Private schema 3 migration preserves existing state; old orders retain unknown request bindings.
 
 Browser lost add/remove acknowledgements survive reload and preserve newer bag entries. Checkout stays disabled until the pending bag request resolves. Safe-integer prices/order acknowledgements preserve the exact final cent using BigInt formatting; the prior cents/100 path rounded MAX_SAFE_INTEGER cents. Typecheck/build, 57 checks and eight production Chromium cases pass locally. Rich data/full schema/history/distribution remain independent next work.
+
+
+## Reproduced complete-source gap (fixed)
+
+An actual persisted source probe accepted an order with total1 versus line2800, missing line fields and an invalid time. The owned schema/catalog/cart/order/command validator now rejects malformed/unsafe/extra/missing/contradictory source before reads or actions, and validates before commit to roll back new invalid state. Known schema0/2 migration preserves source; invalid existing schema3/catalog/identity is not silently healed. Original history retains IDs/text/prices/times and unknown request provenance; retired products/revision gaps remain honest, and stock/budget conflicts remain inspectable for explicit removal. Consecutive revisions enforce original checkout stock/price/name continuity.
+
+Ninety-one checks (58 domain/source/history + 33 actual native SDK), typecheck, production build and eight Chromium flows pass locally. Source failure after final provider prose now saves a failed receipt and returns no successful answer. Source validation has bounded local product/order/command history limits recorded in COMPATIBILITY.md. Rich cases/CLI/distribution remain next, followed by the remaining portfolio projects; external gates stay parked.

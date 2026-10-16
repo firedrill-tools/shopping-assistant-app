@@ -4,10 +4,12 @@ import { dirname, join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import {
   cartCommandInput,
-  cartEffect,
   cartCommandKey,
   type CartCommand,
 } from "./cart-contracts";
+import { ShopError } from "./shop-error";
+import { validateShop, validateCommandRecord } from "./shop-schemas";
+export { ShopError } from "./shop-error";
 
 export type Product = {
   id: string;
@@ -61,15 +63,6 @@ type Order = {
   request_id: string | null;
   expected_cart_token: string | null;
 };
-
-export class ShopError extends Error {
-  constructor(
-    public code: string,
-    message: string,
-  ) {
-    super(message);
-  }
-}
 
 function safe(
   value: unknown,
@@ -168,6 +161,7 @@ export class ShopStore {
   private db: DatabaseSync;
   private inTransaction = false;
   private closed = false;
+  private initialized = false;
 
   constructor(path: string) {
     mkdirSync(dirname(path), { recursive: true, mode: 0o700 });
@@ -200,23 +194,23 @@ export class ShopStore {
             .all() as { name: string }[]
         ).map((row) => row.name);
         const required = ["products", "carts", "cart_lines", "orders"];
+        const expected =
+          version.user_version === 3
+            ? [...required, "shop_metadata", "cart_commands"]
+            : version.user_version === 2
+              ? [...required, "shop_metadata"]
+              : required;
         if (
           existing.length &&
-          (!required.every((name) => existing.includes(name)) ||
-            existing.some(
-              (name) =>
-                ![
-                  ...required,
-                  "dataset_metadata",
-                  "shop_metadata",
-                  "cart_commands",
-                ].includes(name),
-            ))
+          existing.sort().join(",") !== expected.sort().join(",")
         )
           throw new ShopError(
             "invalid_state",
             "Database is not an owned shop schema",
           );
+        if (!existing.length && version.user_version !== 0)
+          throw new ShopError("invalid_state", "Owned shop tables are missing");
+        if (version.user_version === 3) validateShop(this.db);
         this.db.exec(`
           CREATE TABLE IF NOT EXISTS products (id TEXT PRIMARY KEY, name TEXT NOT NULL, category TEXT NOT NULL, description TEXT NOT NULL, price_cents INTEGER NOT NULL, stock INTEGER NOT NULL, revision INTEGER NOT NULL);
           CREATE TABLE IF NOT EXISTS carts (id TEXT PRIMARY KEY, budget_cents INTEGER NOT NULL);
@@ -248,13 +242,7 @@ export class ShopStore {
         this.db.exec(
           "CREATE UNIQUE INDEX IF NOT EXISTS orders_request ON orders(cart_id,request_id) WHERE request_id IS NOT NULL",
         );
-        if (
-          (
-            this.db.prepare("SELECT COUNT(*) AS count FROM products").get() as {
-              count: number;
-            }
-          ).count === 0
-        ) {
+        if (!existing.length) {
           const insert = this.db.prepare(
             "INSERT INTO products VALUES (?,?,?,?,?,?,1)",
           );
@@ -268,14 +256,16 @@ export class ShopStore {
               row.stock,
             );
         }
-        this.db
-          .prepare(
-            "INSERT OR IGNORE INTO carts(id,budget_cents,revision) VALUES ('demo',15000,1)",
-          )
-          .run();
-        this.db
-          .prepare("INSERT OR IGNORE INTO shop_metadata VALUES (1,?)")
-          .run(randomUUID());
+        if (!existing.length)
+          this.db
+            .prepare(
+              "INSERT INTO carts(id,budget_cents,revision) VALUES ('demo',15000,1)",
+            )
+            .run();
+        if (!existing.length || version.user_version === 0)
+          this.db
+            .prepare("INSERT INTO shop_metadata VALUES (1,?)")
+            .run(randomUUID());
         if (this.db.prepare("PRAGMA foreign_key_check").all().length)
           throw new ShopError(
             "invalid_state",
@@ -283,6 +273,8 @@ export class ShopStore {
           );
         this.state();
         this.db.exec("PRAGMA user_version=3");
+        validateShop(this.db);
+        this.initialized = true;
       });
       this.db.exec("PRAGMA journal_mode=WAL");
       this.state();
@@ -314,7 +306,9 @@ export class ShopStore {
     this.db.exec(`BEGIN ${mode}`);
     this.inTransaction = true;
     try {
+      if (this.initialized) validateShop(this.db);
       const result = work();
+      if (this.initialized) validateShop(this.db);
       guard?.();
       this.db.exec("COMMIT");
       return result;
@@ -327,29 +321,37 @@ export class ShopStore {
   }
 
   products(): Product[] {
-    return (
-      this.db
-        .prepare("SELECT * FROM products ORDER BY rowid")
-        .all() as Product[]
-    ).map(product);
+    const read = () =>
+      (
+        this.db
+          .prepare("SELECT * FROM products ORDER BY rowid")
+          .all() as Product[]
+      ).map(product);
+    return this.inTransaction ? read() : this.transaction(read, "DEFERRED");
   }
   product(productId: string): Product | undefined {
     id(productId, "Product ID");
-    const row = this.db
-      .prepare("SELECT * FROM products WHERE id=?")
-      .get(productId) as Product | undefined;
-    return row && product(row);
+    const read = () => {
+      const row = this.db
+        .prepare("SELECT * FROM products WHERE id=?")
+        .get(productId) as Product | undefined;
+      return row && product(row);
+    };
+    return this.inTransaction ? read() : this.transaction(read, "DEFERRED");
   }
   alternatives(productId: string): Product[] {
-    const target = this.product(productId);
-    if (!target) throw new ShopError("not_found", "Product not found");
-    return (
-      this.db
-        .prepare(
-          "SELECT * FROM products WHERE category=? AND id!=? AND stock>0 ORDER BY price_cents,id",
-        )
-        .all(target.category, productId) as Product[]
-    ).map(product);
+    const read = () => {
+      const target = this.product(productId);
+      if (!target) throw new ShopError("not_found", "Product not found");
+      return (
+        this.db
+          .prepare(
+            "SELECT * FROM products WHERE category=? AND id!=? AND stock>0 ORDER BY price_cents,id",
+          )
+          .all(target.category, productId) as Product[]
+      ).map(product);
+    };
+    return this.inTransaction ? read() : this.transaction(read, "DEFERRED");
   }
 
   private readState(): ShopState {
@@ -514,35 +516,12 @@ export class ShopStore {
               "request_reused",
               "Bag request ID belongs to another update; inspect its original request",
             );
-          let effect;
-          try {
-            effect = cartEffect.parse(JSON.parse(prior.effect_json));
-          } catch {
-            throw new ShopError(
-              "invalid_state",
-              "Original bag acknowledgement is invalid",
-            );
-          }
           const state = this.state();
-          const delta =
-            BigInt(effect.after_quantity) - BigInt(effect.before_quantity);
-          const revisionDelta =
-            BigInt(effect.after_revision) - BigInt(effect.before_revision);
-          if (
-            effect.request_id !== input.request_id ||
-            effect.action !== input.action ||
-            effect.product_id !== input.product_id ||
-            effect.state_id !== state.state_id ||
-            !Number.isFinite(Date.parse(prior.created_at)) ||
-            (input.action === "add"
-              ? delta !== BigInt(input.quantity) || revisionDelta !== 1n
-              : effect.after_quantity !== 0 ||
-                revisionDelta !== (effect.before_quantity > 0 ? 1n : 0n))
-          )
-            throw new ShopError(
-              "invalid_state",
-              "Original bag acknowledgement is incoherent",
-            );
+          const { effect } = validateCommandRecord(
+            { ...prior, request_id: input.request_id },
+            state.state_id,
+            state.cart_revision,
+          );
           return {
             intent: input,
             effect,
@@ -731,7 +710,9 @@ export class ShopStore {
   }
 
   orders(): Order[] {
-    return this.db.prepare("SELECT * FROM orders ORDER BY id").all() as Order[];
+    const read = () =>
+      this.db.prepare("SELECT * FROM orders ORDER BY id").all() as Order[];
+    return this.inTransaction ? read() : this.transaction(read, "DEFERRED");
   }
 }
 

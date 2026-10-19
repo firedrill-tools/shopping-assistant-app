@@ -26,3 +26,7 @@ Validate owned schema and complete coherent source/history at open, around trans
 
 
 Data source authority is fixtures/base.json → scripts/generate_data.py → twelve LF/hash-bound data cases/manifest. Keep synthetic human order history coherent and original request IDs unknown; never invent native runs/usage. Optional dataset metadata is a strict original-seed provenance contract, not the current mutable state or model prompt. Human task/focus must stay out of implicit model context. Initialization publishes only complete private new DBs exclusively, refuses existing DB/sidecars/links and preserves uncertain publication; never reset another destination. Read-only show must not create/migrate/mutate source. Include all code/data/docs/tests/config/lock/CI in the source archive, exclude private/generated state and verify the full fresh locked install/CLI/native/browser gates outside checkout. The browser reset helper may remove only its explicitly owned ignored starter/busy test destinations before their servers start.
+
+## Current Firedrill integration
+
+Released CLI/SDK 2.2.2, current command invocation, remote operator MCP and recovery are documented in [firedrill/README.md](firedrill/README.md). Offline checks call the actual shop/native chat handler and preserve separate shopper write authority. Authenticated persisted runs and live quality/cost remain parked separately.

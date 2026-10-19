@@ -1,0 +1,47 @@
+{
+  "schemaVersion": "2026-10-14",
+  "name": "Shopping \u2014 actual read-only AI SDK chat handler",
+  "target": {
+    "kind": "command",
+    "argv": [
+      "node",
+      "firedrill/target.mjs"
+    ]
+  },
+  "scenarios": [
+    {
+      "id": "starter",
+      "name": "starter chat",
+      "input": {
+        "caseId": "starter",
+        "action": "chat",
+        "message": "Find an available bath towel within my stored budget. Advice only; do not add items or checkout."
+      }
+    },
+    {
+      "id": "ambiguous-names",
+      "name": "ambiguous-names chat",
+      "input": {
+        "caseId": "ambiguous-names",
+        "action": "chat",
+        "message": "Which Everyday mug should I choose? Ask for clarification if identity is ambiguous."
+      }
+    },
+    {
+      "id": "busy",
+      "name": "busy inspect",
+      "input": {
+        "caseId": "busy",
+        "action": "inspect",
+        "message": null
+      }
+    }
+  ],
+  "repetitions": 1,
+  "concurrency": 1,
+  "limits": {
+    "timeoutMs": 240000,
+    "maxRuns": 3,
+    "maxOutputBytes": 4194304
+  }
+}

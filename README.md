@@ -64,3 +64,7 @@ After installing Chromium, run `npm run check:distribution`. It builds `dist/sho
 Independent offline qualification is complete; parked gates remain in [PLAN.md](PLAN.md). Live advice requires provider access and human review. Firedrill integration awaits its qualified new release. The repository is private with no selected public license.
 
 Explore related applications in the [Firedrill example catalog](https://github.com/firedrill-tools/firedrill-example-catalog). Product and setup references: [Firedrill](https://firedrill.run/) and the [official developer documentation](https://docs.firedrill.run/). Use documentation matching the qualified release; this repository records its current integration limits above.
+
+## Current Firedrill integration
+
+Released CLI/SDK 2.2.2, current command invocation, remote operator MCP and recovery are documented in [firedrill/README.md](firedrill/README.md). Offline checks call the actual shop/native chat handler and preserve separate shopper write authority. Authenticated persisted runs and live quality/cost remain parked separately.

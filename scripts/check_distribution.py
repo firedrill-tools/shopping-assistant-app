@@ -30,8 +30,8 @@ def run(command, cwd):
 
 
 def source_archive():
-    entries = [".env.example", ".gitattributes", ".gitignore", ".github", "AGENTS.md", "README.md", "PLAN.md", "COMPATIBILITY.md", "package.json", "package-lock.json", "next.config.ts", "next-env.d.ts", "tsconfig.json", "playwright.config.ts", "app", "lib", "fixtures/base.json", "data/manifest.json", "data/cases", "scripts", "test", "e2e", "e2e-busy", "scenarios"]
-    excluded = {"__pycache__", ".DS_Store"}
+    entries = ["firedrill", ".env.example", ".gitattributes", ".gitignore", ".github", "AGENTS.md", "README.md", "PLAN.md", "COMPATIBILITY.md", "package.json", "package-lock.json", "next.config.ts", "next-env.d.ts", "tsconfig.json", "playwright.config.ts", "app", "lib", "fixtures/base.json", "data/manifest.json", "data/cases", "scripts", "test", "e2e", "e2e-busy", "scenarios"]
+    excluded = {"__pycache__", ".DS_Store", "node_modules", ".runs"}
     files = {}
     for entry in entries:
         target = ROOT / entry
@@ -91,6 +91,9 @@ with TemporaryDirectory(prefix="firedrill-shopping-distribution-") as temporary:
     before = (destinations / "busy.db").read_bytes()
     refused = subprocess.run([str(item) for item in [*cli, "init", "--case", "starter", "--db", destinations / "busy.db", "--data-root", workspace / "data"]], cwd=base, env=ENV, capture_output=True, timeout=60)
     assert refused.returncode == 1 and (destinations / "busy.db").read_bytes() == before
+    assert (workspace/'firedrill/scenario.json').exists() and not (workspace/'firedrill/node_modules').exists()
+    run([NPM, 'ci', '--prefix', 'firedrill', '--ignore-scripts', '--no-audit', '--no-fund'], workspace)
+    run([NPM, 'test', '--prefix', 'firedrill'], workspace)
     run([NPM, "test"], workspace)
     run([NPM, "run", "typecheck"], workspace)
     run([NPM, "run", "build"], workspace)

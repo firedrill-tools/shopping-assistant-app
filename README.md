@@ -79,7 +79,7 @@ After installing Chromium, run `npm run check:distribution`. It builds `dist/sho
 
 Independent offline qualification is complete; parked gates remain in [PLAN.md](PLAN.md). Live advice requires provider access and human review. The included [Firedrill integration](firedrill/README.md) uses the actual chat handler; authenticated persisted runs remain unverified. The repository is publicly viewable; no project license has been selected.
 
-Explore related applications in the [Firedrill example catalog](https://github.com/firedrill-tools/firedrill-example-catalog). Product and setup references: [Firedrill](https://firedrill.run/) and the [official developer documentation](https://docs.firedrill.run/). Use documentation matching the qualified release; this repository records its current integration limits above.
+Explore related applications in the [Firedrill examples](https://docs.firedrill.run/guides/examples). Product and setup references: [Firedrill](https://firedrill.run/) and the [official developer documentation](https://docs.firedrill.run/). Use documentation matching the qualified release; this repository records its current integration limits above.
 
 ## Current Firedrill integration
 

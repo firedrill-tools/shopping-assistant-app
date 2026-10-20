@@ -2,6 +2,8 @@
 
 A Next.js home goods shop with a [Vercel AI SDK](https://ai-sdk.dev/docs/ai-sdk-core/tools-and-tool-calling) assistant. The assistant searches products, checks the cart and suggests available substitutes. The shopper uses visible controls to add items and place a synthetic order. SQLite enforces stock, the stored budget (initially $150) and product revisions independently of model advice.
 
+This example repository is publicly viewable. A project license has not been selected.
+
 ## Simulate with Firedrill
 
 [Firedrill](https://firedrill.run/) is a simulation platform for AI agents.
@@ -75,7 +77,7 @@ Each run writes a private `.runs/<run-id>/receipt.json` containing task/source h
 
 After installing Chromium, run `npm run check:distribution`. It builds `dist/shopping-assistant-app-0.2.0-source.tar.gz` from application/source/tests/data/docs/lock/CI, extracts into an independent temporary directory, compares every source hash, performs a fresh `npm ci`, initializes all twelve cases through the actual CLI from another working directory, and repeats all checks/typecheck/build/nine production browser flows. On Linux, install browser system dependencies with `npx playwright install --with-deps chromium` first. CI runs the same gate and retains the private source artifact for seven days. Dependencies, private state/receipts and build outputs are excluded. The source archive is a local application distribution, not an npm/public release.
 
-Independent offline qualification is complete; parked gates remain in [PLAN.md](PLAN.md). Live advice requires provider access and human review. The included [Firedrill integration](firedrill/README.md) uses the actual chat handler; authenticated persisted runs remain unverified. The repository is private with no selected public license.
+Independent offline qualification is complete; parked gates remain in [PLAN.md](PLAN.md). Live advice requires provider access and human review. The included [Firedrill integration](firedrill/README.md) uses the actual chat handler; authenticated persisted runs remain unverified. The repository is publicly viewable; no project license has been selected.
 
 Explore related applications in the [Firedrill example catalog](https://github.com/firedrill-tools/firedrill-example-catalog). Product and setup references: [Firedrill](https://firedrill.run/) and the [official developer documentation](https://docs.firedrill.run/). Use documentation matching the qualified release; this repository records its current integration limits above.
 
